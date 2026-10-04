@@ -1,0 +1,52 @@
+{
+  "_comment": "Calibrated parameters for ENSO diversity model. Nondimensionalized using nondim_scales.json (T=7.5C, h=150m, u=1.5m/s, tau=5m/s, t=2months).",
+  "t_scale_months": 2.0,
+
+  "R_TE": 0.35,
+  "c_E": 0.55,
+  "gamma_E": 0.5,
+  "e_n": 0.3,
+  "R_CE": 0.15,
+  "adv_E": 0.1,
+
+  "R_TC": 0.2,
+  "c_C": 0.6,
+  "gamma_C": 0.2,
+  "e_n_C": 0.3,
+  "adv_C": 0.15,
+  "wind_C": 0.25,
+  "R_EC": 0.3,
+
+  "r": 0.2,
+  "r2": 0.0,
+  "alpha": 0.25,
+
+  "lambda_u": 1.5,
+  "kappa_uw": 0.3,
+  "r_u": 0.3,
+  "r_u2": 0.0,
+
+  "lambda_tau": 1.2,
+  "beta_tau_E": 0.5,
+  "beta_tau_C": 0.3,
+  "tau_nl": 0.05,
+
+  "b": 0.5,
+
+  "sigma_TC": 0.1,
+  "sigma_TE": 0.12,
+  "sigma_hW": 0.06,
+  "sigma_u": 0.15,
+  "sigma_tau": 0.25,
+
+  "season_coupling_amp": 0.3,
+  "season_noise_amp": 0.3,
+
+  "multiplicative_noise": true,
+  "mc_TC": 0.05,
+  "mc_TE": 0.05,
+
+  "noise_corr_TE_TC": 0.6,
+  "noise_corr_tau_TC": 0.4,
+  "noise_corr_tau_hW": 0.2
+}

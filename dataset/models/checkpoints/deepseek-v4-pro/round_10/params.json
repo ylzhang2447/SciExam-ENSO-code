@@ -1,0 +1,36 @@
+{
+  "_comment": "ENSO 5-var diversity model. Linear: VAR(1) fit. Nonlinear: sigmoid asymmetric growth + cubic saturation + seasonal modulation.",
+  "t_scale_months": 2.0,
+  "season_peak_month": 12,
+
+  "A_matrix": [
+    -0.172,  0.096,  0.149,  0.133,  0.045,
+    -0.064, -0.130,  0.089,  0.234,  0.071,
+     0.093, -0.151, -0.170, -0.211, -0.061,
+    -0.275,  0.200,  0.783, -0.671,  0.065,
+     2.200,  0.200, -0.018,  0.283, -1.150
+  ],
+
+  "dA_matrix": [
+    -0.01,  0.08,  0.05,  0.03,  0.01,
+     0.03,  0.06,  0.06,  0.04,  0.03,
+     0.01, -0.02,  0.01, -0.01, -0.02,
+     0.00,  0.02,  0.08,  0.01,  0.03,
+     0.15,  0.10,  0.00,  0.00,  0.08
+  ],
+
+  "sigma_diag": [0.028, 0.050, 0.025, 0.080, 0.400],
+  "s_noise_amp": 0.40,
+  "noise_corr_te_tc": 0.35,
+
+  "sigma_mult_TE": 0.04,
+  "sigma_mult_TC": 0.02,
+  "sigma_asym_TE": 0.08,
+  "sigma_asym_TC": 0.03,
+
+  "g_asym_TE": 0.10,
+  "g_asym_TC": 0.08,
+  "k_asym": 12.0,
+  "c_sat": 0.005,
+  "tau_nl": 0.005
+}

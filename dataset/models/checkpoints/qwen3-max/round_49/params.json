@@ -1,0 +1,40 @@
+{
+    "TC": {
+        "alpha": 5.01,
+        "beta": 1.505,
+        "mu": 0.019,
+        "gamma": 0.12
+    },
+    "TE": {
+        "alpha": 11.02,
+        "beta": 2.0,
+        "mu": 0.00115,
+        "gamma": 0.12
+    },
+    "hW": {
+        "epsilon": 2.002,
+        "kappa": 1.0,
+        "xi": 0.0605
+    },
+    "u": {
+        "zeta": 0.15,
+        "eta": 1.505
+    },
+    "tau": {
+        "sigma_tau": 0.1205,
+        "rho_tau": 0.902,
+        "bjerknes_TC": 0.352,
+        "bjerknes_TE": 0.45
+    },
+    "nonlinear": {
+        "T_nonlin": 0.041,
+        "TE_quad": 0.052,
+        "h_nonlin": 0.0355
+    },
+    "seasonal": {
+        "amp_TC": 0.256,
+        "amp_TE": 0.392,
+        "phase_TC": 1.0,
+        "phase_TE": 1.0
+    }
+}

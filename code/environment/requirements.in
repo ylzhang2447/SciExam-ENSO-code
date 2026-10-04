@@ -1,0 +1,15 @@
+# Direct and transitive requirements of the grading image, pinned to the versions used to
+# produce the released scores. requirements.lock holds the sha256 of each wheel
+# (CPython 3.12, manylinux x86_64).
+numpy==2.5.1
+scipy==1.18.0
+pandas==3.0.5
+xarray==2026.7.0
+netCDF4==1.7.4
+cftime==1.6.5
+numba==0.67.0
+llvmlite==0.49.0
+python-dateutil==2.9.0.post0
+six==1.17.0
+packaging==26.3
+certifi==2026.7.22

@@ -1,0 +1,7 @@
+{
+ "arm": "reference",
+ "display_name": "5D reference model",
+ "role": "reference",
+ "calendar_offset": 0.0,
+ "note": "t_shift = -1 in params.json places the model in the grader's calendar frame"
+}

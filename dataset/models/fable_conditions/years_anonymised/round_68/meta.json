@@ -1,0 +1,9 @@
+{
+ "arm": "fable51",
+ "display_name": "Claude Fable 5.1",
+ "run_id": "fable_conditions/years_anonymised",
+ "condition": "years_anonymised",
+ "round": "round_68",
+ "role": "final",
+ "calendar_offset": -1.0
+}

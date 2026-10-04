@@ -1,0 +1,8 @@
+{
+ "arm": "opus5",
+ "display_name": "Claude Opus 5",
+ "candidate": "diagonal_noise",
+ "role": "competing reduction",
+ "family": "linear+multiplicative",
+ "calendar_offset": -1.0
+}

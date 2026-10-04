@@ -1,0 +1,266 @@
+{
+ "run_id": "main/gemini38",
+ "arm": "gemini38",
+ "campaign_id": "formal6C2-20260911",
+ "archive": "run workspace (copy taken before the host workspace was deleted)",
+ "pointer_roots": {
+  "run": "the run's archive (see archive)",
+  "harness": "the harness state directory of the run host"
+ },
+ "values": {
+  "scaffold_version": {
+   "value": "Antigravity CLI 1.2.0",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "runtime_provenance.cli_version_observed"
+    }
+   ],
+   "method": "the Antigravity stream carries no version, so this is the harness probe of the binary inside the agent container at launch (an observation of the executing binary, recorded in run_meta)",
+   "configuration_claim": "freeze rule expected version 1.1.22 (runtime_provenance.cli_version_matches_frozen = false)"
+  },
+  "route": {
+   "value": "agy",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "agy_usage.jsonl",
+     "field": "kind=model_call rows"
+    },
+    {
+     "root": "harness",
+     "path": "otel/allowlist_proxy.log",
+     "field": "tunnels to the Google model host during the run window"
+    }
+   ],
+   "method": "3429 model calls logged by the Antigravity usage hook. The only outbound tunnels in the run window were to Google model and sign-in hosts"
+  },
+  "provider_pin": {
+   "value": "n/a (first-party subscription, no router)",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "agy_usage.jsonl",
+     "field": "kind=model_call rows"
+    },
+    {
+     "root": "harness",
+     "path": "otel/allowlist_proxy.log",
+     "field": "tunnels to the Google model host during the run window"
+    }
+   ],
+   "method": "no router sits between this scaffold and its provider"
+  },
+  "reasoning_effort": {
+   "value": "medium",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "agent_output.txt",
+     "field": "event=init.init.model (gemini-3.8-flash-medium)"
+    },
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 3,
+     "field": "event=model_identity.reasoning_level"
+    }
+   ],
+   "method": "the model variant the Antigravity CLI reported at every conversation start (gemini-3.8-flash-medium). The effort tier is part of the model variant"
+  },
+  "campaign_id": {
+   "value": "formal6C2-20260911",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 1,
+     "field": "event=batch_gate.go_line (GO 2026-09-11T02:44:13Z)"
+    },
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "experiment"
+    }
+   ],
+   "method": "the batch gate record at the top of the trajectory (admission and GO time) and the experiment name the harness wrote at admission"
+  },
+  "freeze_id": {
+   "value": "af097b2d76dd52b1",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "freeze_guard.manifest_sha256, freeze_guard.mode, freeze_guard.enforced, freeze_guard.verdict"
+    }
+   ],
+   "method": "sha256 of the freeze manifest the freeze guard checked at admission (first 16 hex digits). Guard state: development mode, not enforced, verdict PASS",
+   "guard": "development mode, not enforced"
+  },
+  "eligible_s": {
+   "value": 21613.6,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 123,
+     "field": "event=quota_summary.eligible_elapsed_s"
+    }
+   ],
+   "method": "the harness eligible clock at the end of the run: wall time minus credited provider pauses"
+  },
+  "wall_s": {
+   "value": 21613.6,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 123,
+     "field": "event=quota_summary.wall_elapsed_s"
+    }
+   ],
+   "method": "wall time from the start event to the end of the run"
+  },
+  "credited_pauses": {
+   "value": 0,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 123,
+     "field": "event=quota_summary.quota_pause_events"
+    }
+   ],
+   "method": "count of eligible_pause events with credited seconds > 0 (0 s credited in total)",
+   "detail": []
+  },
+  "completion": {
+   "value": "complete",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 124,
+     "field": "event=end.status (complete)"
+    },
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 2,
+     "field": "event=start.budget_s (21600.0)"
+    }
+   ],
+   "method": "end status complete and eligible time at or above the eligible budget"
+  },
+  "max_context_tokens": {
+   "value": 291594,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "agy_usage.jsonl",
+     "line": 632
+    }
+   ],
+   "method": "largest context_carried over the 3429 model calls in agy_usage.jsonl. 954 calls exceeded 200,000",
+   "configuration_claim": "no context bound is configurable for this CLI (harness cap AGY_MAX_CONTEXT_TOKENS 600000 in agy_status.json)"
+  },
+  "compactions": {
+   "value": "UNKNOWN",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "agy_usage.jsonl",
+     "field": "context_carried drops within one conversation"
+    }
+   ],
+   "reason": "the Antigravity CLI logs no compaction event. 23 drops of more than half the carried context within one conversation were seen, which may be compactions or internal resets",
+   "large_context_drops": 23
+  },
+  "jin_pdf_read": {
+   "value": "no",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "agent_output.txt",
+     "line": 22,
+     "note": "ls of papers/"
+    },
+    {
+     "root": "run",
+     "path": "agent_output.txt",
+     "line": 58,
+     "note": "view_file papers/README.md"
+    }
+   ],
+   "method": "A call counts as reading the PDF when a tool call that touches the PDF (a Read of the .pdf, or a shell command naming the file or a PDF library) returns at least 1,500 characters containing at least three of: thermocline, recharge, discharge, zonal, equatorial, Kelvin, Rossby, oscillator, wind stress, Sverdrup. Each hit was then checked by hand."
+  },
+  "jin_pdf_method": {
+   "value": "not attempted: the agent listed papers/ and read papers/README.md only"
+  },
+  "network_condition": {
+   "value": "none (allowlist proxy: model and sign-in hosts only)",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 4,
+     "field": "event=network_policy (netpolicy-1, host allowlist CONNECT proxy, preflight passed)"
+    },
+    {
+     "root": "harness",
+     "path": "otel/allowlist_proxy.log",
+     "field": "run window: 10,007 CONNECTs denied to play.googleapis.com, 396 to antigravity-unleash.goog, 42 to playwright CDNs. Allowed only daily-cloudcode-pa, www.googleapis.com, oauth2, lh3.googleusercontent.com"
+    }
+   ],
+   "method": "the proxy decision log for the run window. The agent itself made no package or web request"
+  },
+  "cost_usd": {
+   "value": "subscription",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "agy_usage.jsonl",
+     "field": "kind=model_call rows"
+    },
+    {
+     "root": "harness",
+     "path": "otel/allowlist_proxy.log",
+     "field": "tunnels to the Google model host during the run window"
+    }
+   ],
+   "method": "no per-token charge: subscription (Google, Antigravity CLI subscription login). The gateway account for the batch moved by $14.929249 over the batch window, none of it from this arm"
+  },
+  "cost_basis": {
+   "value": "subscription (Google, Antigravity CLI subscription login)"
+  },
+  "checkpoints": {
+   "value": 69,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "field": "event=snapshot (69 records)"
+    },
+    {
+     "root": "harness",
+     "path": "snapshots/formal6C2-20260911/formal6C2-20260911__gemini38/",
+     "field": "69 round_NN folders"
+    }
+   ],
+   "method": "eligible seconds of each snapshot = (snapshot time minus start time) minus credited pause seconds settled before it, with the clock frozen during a pause (the harness rule). Snapshot event round r is folder round_{r+1}. Folder modification times match the event times within 0.1 s. The computed values agree with the harness's own elapsed_min stamp to within 3.0 s (its 0.1 min rounding)",
+   "snapshot_folders": 69
+  }
+ },
+ "unknown": [
+  {
+   "field": "compactions",
+   "reason": "the Antigravity CLI logs no compaction event. 23 drops of more than half the carried context within one conversation were seen, which may be compactions or internal resets"
+  }
+ ],
+ "configuration_vs_evidence": [
+  "Antigravity CLI observed at 1.2.0 while the freeze rule expected 1.1.22 (runtime_provenance.cli_version_matches_frozen false). The provenance check still reported PASS.",
+  "the freeze guard ran in development mode and was not enforced (run_meta mode = development). The manifest digest af097b2d76dd52b1 still matched (verdict PASS).",
+  "run_meta records a 200,000-token working-context budget, but the largest request carried 291,594 tokens."
+ ]
+}

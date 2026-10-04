@@ -1,0 +1,12 @@
+{
+  "damping_TC": 0.12,
+  "damping_TE": 0.12,
+  "damping_hW": 0.12,
+  "damping_u": 0.12,
+  "damping_tau": 0.12,
+  "noise_TC": 0.3,
+  "noise_TE": 0.4,
+  "noise_hW": 6.0,
+  "noise_u": 0.07,
+  "noise_tau": 0.9
+}

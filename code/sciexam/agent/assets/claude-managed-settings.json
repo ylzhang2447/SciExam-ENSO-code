@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/lib/sciexam/local_reader_gate.py --schema claude --tools Read"
+          }
+        ]
+      }
+    ]
+  }
+}

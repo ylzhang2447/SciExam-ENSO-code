@@ -1,0 +1,83 @@
+{
+ "run_id": "reference/5d",
+ "arm": "reference",
+ "campaign_id": "n/a",
+ "archive": "not an agent run: the published five-variable reference model (arXiv:2402.04585) written into the submission interface",
+ "pointer_roots": {},
+ "values": {
+  "scaffold_version": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "route": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "provider_pin": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "reasoning_effort": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "campaign_id": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "freeze_id": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "eligible_s": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "wall_s": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "credited_pauses": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "completion": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "max_context_tokens": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "compactions": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "jin_pdf_read": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "jin_pdf_method": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "network_condition": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "cost_usd": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "cost_basis": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  },
+  "checkpoints": {
+   "value": "n/a",
+   "method": "the reference model was not produced by an agent run, so there is no scaffold, route, clock, context, network or cost to record"
+  }
+ },
+ "unknown": [],
+ "configuration_vs_evidence": []
+}

@@ -1,0 +1,30 @@
+# Codex CLI configuration of a benchmark arm. `sciexam run-agent` renders it into
+# <workspace>/.codex/config.toml before every turn.
+model = "{MODEL}"
+model_reasoning_effort = "{EFFORT}"
+
+# Compaction threshold of the common 200000-token working context. The CLI compacts when
+# the context reaches it. It is not a hard ceiling on a single request.
+model_auto_compact_token_limit = {AUTO_COMPACT}
+
+# Native web search is on by default in the Codex CLI and this key is its only control.
+web_search = "{WEB_SEARCH}"
+
+[features]
+# The formal configuration pinned 16 feature flags to false. These five are the ones the
+# released records name. Add the others from `codex features list` of the pinned CLI if
+# they are on by default.
+browser_use = false
+computer_use = false
+plugins = false
+multi_agent = false
+in_app_browser = false
+
+# Deliberately empty: no MCP servers, plugins, marketplaces or trusted projects.
+[mcp_servers]
+
+[plugins]
+
+[marketplaces]
+
+[projects]

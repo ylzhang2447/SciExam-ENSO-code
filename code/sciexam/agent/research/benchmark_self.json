@@ -1,0 +1,6 @@
+{
+  "note": "List the benchmark's own public pages here (results site, repositories, model cards) so that the research proxy refuses them and any page that quotes them; the released file is empty on purpose.",
+  "hosts": [],
+  "url_substrings": [],
+  "phrases": []
+}

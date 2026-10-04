@@ -1,0 +1,311 @@
+{
+ "run_id": "main/opus5",
+ "arm": "opus5",
+ "campaign_id": "formal6C2-20260911",
+ "archive": "run workspace (copy taken before the host workspace was deleted)",
+ "pointer_roots": {
+  "run": "the run's archive (see archive)",
+  "harness": "the harness state directory of the run host"
+ },
+ "values": {
+  "scaffold_version": {
+   "value": "Claude Code 2.1.223",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/9be91811-2787-4cb6-970b-3011062037c7.jsonl",
+     "field": "version (every transcript record)"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/cd249abc-cf68-401b-ab28-6ec75c61e1ba.jsonl",
+     "field": "version (every transcript record)"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/d2ee2e8d-84e5-4998-9371-7d361a588273.jsonl",
+     "field": "version (every transcript record)"
+    }
+   ],
+   "method": "the CLI version stamped on every record of the agent's own session transcripts (1318 records, 2.1.223: 1318)"
+  },
+  "route": {
+   "value": "claudesub",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 4,
+     "field": "event=cli_identity_verified.scaffold"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/9be91811-2787-4cb6-970b-3011062037c7.jsonl",
+     "field": "message.model and requestId of assistant records"
+    }
+   ],
+   "method": "the harness identity check at launch names the claudesub scaffold, the transcript records Anthropic API request ids and model claude-opus-5, and the gateway ledger holds no row for this model in the run window"
+  },
+  "provider_pin": {
+   "value": "n/a (first-party subscription, no router)",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 4,
+     "field": "event=cli_identity_verified.scaffold"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/9be91811-2787-4cb6-970b-3011062037c7.jsonl",
+     "field": "message.model and requestId of assistant records"
+    }
+   ],
+   "method": "no router sits between this scaffold and its provider"
+  },
+  "reasoning_effort": {
+   "value": "medium",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/9be91811-2787-4cb6-970b-3011062037c7.jsonl",
+     "field": "effort (assistant records)"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/cd249abc-cf68-401b-ab28-6ec75c61e1ba.jsonl",
+     "field": "effort (assistant records)"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/d2ee2e8d-84e5-4998-9371-7d361a588273.jsonl",
+     "field": "effort (assistant records)"
+    }
+   ],
+   "method": "the effort field Claude Code stamped on each assistant record (medium/None: 832)",
+   "configuration_claim": "run_meta runtime_provenance.effort = medium"
+  },
+  "campaign_id": {
+   "value": "formal6C2-20260911",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 2,
+     "field": "event=batch_gate.go_line (GO 2026-09-11T02:44:13Z)"
+    },
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "experiment"
+    }
+   ],
+   "method": "the batch gate record at the top of the trajectory (admission and GO time) and the experiment name the harness wrote at admission"
+  },
+  "freeze_id": {
+   "value": "af097b2d76dd52b1",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "freeze_guard.manifest_sha256, freeze_guard.mode, freeze_guard.enforced, freeze_guard.verdict"
+    }
+   ],
+   "method": "sha256 of the freeze manifest the freeze guard checked at admission (first 16 hex digits). Guard state: development mode, not enforced, verdict PASS",
+   "guard": "development mode, not enforced"
+  },
+  "eligible_s": {
+   "value": 21600.1,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 129,
+     "field": "event=quota_summary.eligible_elapsed_s"
+    }
+   ],
+   "method": "the harness eligible clock at the end of the run: wall time minus credited provider pauses"
+  },
+  "wall_s": {
+   "value": 21600.1,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 129,
+     "field": "event=quota_summary.wall_elapsed_s"
+    }
+   ],
+   "method": "wall time from the start event to the end of the run"
+  },
+  "credited_pauses": {
+   "value": 0,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 129,
+     "field": "event=quota_summary.quota_pause_events"
+    }
+   ],
+   "method": "count of eligible_pause events with credited seconds > 0 (0 s credited in total)",
+   "detail": []
+  },
+  "completion": {
+   "value": "complete",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 130,
+     "field": "event=end.status (complete)"
+    },
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 3,
+     "field": "event=start.budget_s (21600.0)"
+    }
+   ],
+   "method": "end status complete and eligible time at or above the eligible budget"
+  },
+  "max_context_tokens": {
+   "value": 658258,
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/9be91811-2787-4cb6-970b-3011062037c7.jsonl",
+     "line": 1330
+    }
+   ],
+   "method": "Anthropic-format usage per API message in the Claude Code transcript (input + cache_read + cache_creation), deduplicated by message id. 282 of 446 API messages exceeded 200,000",
+   "configuration_claim": "run_meta harness.context_tokens = 200000 (configured working-context budget)"
+  },
+  "compactions": {
+   "value": 0,
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/9be91811-2787-4cb6-970b-3011062037c7.jsonl",
+     "field": "no system/compact_boundary record"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/cd249abc-cf68-401b-ab28-6ec75c61e1ba.jsonl",
+     "field": "no system/compact_boundary record"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/d2ee2e8d-84e5-4998-9371-7d361a588273.jsonl",
+     "field": "no system/compact_boundary record"
+    }
+   ],
+   "method": "system records with subtype compact_boundary in the transcripts",
+   "pre_tokens": []
+  },
+  "jin_pdf_read": {
+   "value": "no",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/d2ee2e8d-84e5-4998-9371-7d361a588273.jsonl",
+     "line": 19,
+     "note": "Bash via pypdf, 98 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/d2ee2e8d-84e5-4998-9371-7d361a588273.jsonl",
+     "line": 21,
+     "note": "Bash via pdfminer, 444 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/d2ee2e8d-84e5-4998-9371-7d361a588273.jsonl",
+     "line": 24,
+     "note": "Read via Read tool on the PDF, 219 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/d2ee2e8d-84e5-4998-9371-7d361a588273.jsonl",
+     "line": 26,
+     "note": "Bash via zlib decode of PDF streams, 31 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/d2ee2e8d-84e5-4998-9371-7d361a588273.jsonl",
+     "line": 28,
+     "note": "Bash, 4031 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/d2ee2e8d-84e5-4998-9371-7d361a588273.jsonl",
+     "line": 33,
+     "note": "Bash, 8 chars returned"
+    }
+   ],
+   "method": "A call counts as reading the PDF when a tool call that touches the PDF (a Read of the .pdf, or a shell command naming the file or a PDF library) returns at least 1,500 characters containing at least three of: thermocline, recharge, discharge, zonal, equatorial, Kelvin, Rossby, oscillator, wind stress, Sverdrup. Each hit was then checked by hand."
+  },
+  "jin_pdf_method": {
+   "value": "not read: the Read tool answered that PDF files are not read by this tool and pointed to Bash or python, hand-written zlib and LZW decoding of the PDF streams produced no text"
+  },
+  "network_condition": {
+   "value": "UNKNOWN",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "network_audit.json",
+     "field": "tools_used"
+    }
+   ],
+   "method": "agent-side network requests in the transcripts",
+   "reason": "the agent made no network request during the run (no package install, download or web tool call), so the network condition was never exercised and is not observable from its records. The batch's other gateway arm (formal6C2 MiniMax, not a released run) made no request either"
+  },
+  "cost_usd": {
+   "value": "subscription",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 4,
+     "field": "event=cli_identity_verified.scaffold"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6C2-20260911-opus5/9be91811-2787-4cb6-970b-3011062037c7.jsonl",
+     "field": "message.model and requestId of assistant records"
+    }
+   ],
+   "method": "no per-token charge: subscription (Anthropic, Claude Code subscription login). The gateway account for the batch moved by $14.929249 over the batch window, none of it from this arm"
+  },
+  "cost_basis": {
+   "value": "subscription (Anthropic, Claude Code subscription login)"
+  },
+  "checkpoints": {
+   "value": 72,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "field": "event=snapshot (72 records)"
+    },
+    {
+     "root": "harness",
+     "path": "snapshots/formal6C2-20260911/formal6C2-20260911__opus5/",
+     "field": "72 round_NN folders"
+    }
+   ],
+   "method": "eligible seconds of each snapshot = (snapshot time minus start time) minus credited pause seconds settled before it, with the clock frozen during a pause (the harness rule). Snapshot event round r is folder round_{r+1}. Folder modification times match the event times within 0.1 s. The computed values agree with the harness's own elapsed_min stamp to within 3.0 s (its 0.1 min rounding)",
+   "snapshot_folders": 72
+  }
+ },
+ "unknown": [
+  {
+   "field": "network_condition",
+   "reason": "the agent made no network request during the run (no package install, download or web tool call), so the network condition was never exercised and is not observable from its records. The batch's other gateway arm (formal6C2 MiniMax, not a released run) made no request either"
+  }
+ ],
+ "configuration_vs_evidence": [
+  "the freeze guard ran in development mode and was not enforced (run_meta mode = development). The manifest digest af097b2d76dd52b1 still matched (verdict PASS).",
+  "run_meta records a 200,000-token working-context budget, but the largest request carried 658,258 tokens."
+ ]
+}

@@ -1,0 +1,8 @@
+{
+ "arm": "deepseek",
+ "display_name": "DeepSeek V4 Pro",
+ "run_id": "main/deepseek",
+ "round": "round_29",
+ "role": "final",
+ "calendar_offset": -1.0
+}

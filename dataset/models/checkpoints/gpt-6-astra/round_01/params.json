@@ -1,0 +1,8 @@
+{
+  "relaxation_months": 6.0,
+  "TC_sd": 0.7,
+  "TE_sd": 1.0,
+  "hW_sd": 15.0,
+  "u_sd": 0.15,
+  "tau_sd": 2.0
+}

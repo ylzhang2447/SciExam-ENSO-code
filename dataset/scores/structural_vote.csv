@@ -1,0 +1,10 @@
+arm,display_name,vote,lm_candidate,lm_qualifies,lm_relative_change_percent,na_candidate,na_qualifies,na_relative_change_percent
+fable51,Claude Fable 5.1,linear+multiplicative,S3_affine_periodic_drift,true,5.1,,false,
+kimi,Kimi K3,linear+multiplicative,joint_three_diagonal_noise,true,-2.9,,false,
+opus5,Claude Opus 5,nonlinear+additive,diagonal_noise,false,-0.3783465765677674,compact_additive,true,7.5437115579650715
+gpt56,GPT-5.6-Sol,nonlinear+additive,,false,,diagonal_noise,true,4.71296350676238
+gpt6astra,GPT-6 Astra,nonlinear+additive,,false,,joint_after_validation_repair,true,4.427982216080961
+gpt55,GPT-5.5,nonlinear+additive,affine_drift,true,-1.9,additive_noise,true,-1.3
+gemini38,Gemini 3.8 Flash,nonlinear+additive,,false,,additive_noise,true,-1.9
+dsflash,DeepSeek V4.1 Flash,linear+multiplicative,qnl_1,true,11.482437489976993,additive_noise,false,4.074593469574506
+deepseek,DeepSeek V4 Pro,linear+multiplicative,linear_drift,true,-1.3773861675884125,additive_noise,false,-2.9518535897031573

@@ -1,0 +1,30 @@
+{
+  "benchmark-retrieval-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "search_web|read_url_content|open_browser_url|read_browser_page|browser_.*|capture_browser_.*|click_browser_pixel|execute_browser_javascript|list_browser_pages|invoke_subagent|browser_subagent|define_subagent|manage_subagents|call_mcp_tool|generate_image",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./deny_retrieval.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "benchmark-resource-gate": {
+    "PreToolUse": [
+      {
+        "matcher": "view_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/lib/sciexam/local_reader_gate.py --schema antigravity --tools view_file",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,135 @@
+# Arm configuration for `sciexam run-agent`: DeepSeek V4.1 Flash (runs.csv run_id main/dsflash).
+# Every value names its source. runs.csv and evidence/main__dsflash.json are the dataset
+# files. run_meta, the freeze manifest and the harness are the formal run records.
+arm: dsflash
+display_name: DeepSeek V4.1 Flash             # runs.csv display_name
+run_id: main/dsflash               # runs.csv run_id
+campaign_id: formal6J-20260913    # runs.csv campaign_id (the batch this run belonged to)
+
+scaffold:
+  name: claude-code                  # runs.csv scaffold
+  version: "2.1.223"                  # runs.csv scaffold_version
+  npm_package: "@anthropic-ai/claude-code"
+  binary: bin/claude.exe             # the file the harness hashed (run_meta runtime_provenance.cli_path)
+  binary_sha256: 98226474f802e3094d6a86c5ade8883c16206d0fcb5c400b7401c800063e99d7
+  # run_meta runtime_provenance.cli_sha256 (checked at image build and before the run)
+
+route:
+  kind: gateway                      # runs.csv route_observed
+  gateway: litellm
+  gateway_version: "1.83.9"          # gateway image of the formal runs (litellm 1.83.9)
+  gateway_patch: stream-cache-usage
+  # the gateway image of this run (run_meta gateway_binding.runtime.image_id eca1be789e83)
+  # carried the streaming cache-usage patch (environment/gateway/)
+  upstream: openrouter
+  model_alias: dsflash                  # --model given to Claude Code, the gateway model_name
+  model_id: deepseek/deepseek-v4.1-flash   # runs.csv model_id
+  provider_order: [GMICloud]           # run_meta provider_intent.provider_order
+  # observed: runs.csv provider_pin = GMICloud (752 of 752 generations)
+  allow_fallbacks: false             # run_meta provider_intent.allow_fallbacks
+  upstream_hosts: [openrouter.ai]    # reached by the gateway, never by the agent
+
+reasoning:
+  effort: high
+  # runs.csv reasoning_effort = high, the effort stamped on every assistant record.
+  # run_meta records medium, but the observed request effort was high because the
+  # harness forwarded --effort only on the subscription route. The gateway scaffold ran
+  # at the Claude Code default, which is high for this CLI version.
+  pass_effort_flag: false            # reproduce the observed behavior: no --effort flag
+
+context:
+  working_context_tokens: 200000
+  # freeze manifest context_policy.effective_agent_context, run_meta harness.context_tokens
+  mechanism: Claude Code compaction threshold (CLAUDE_CODE_MAX_CONTEXT_TOKENS)
+  enforced: true                     # a compaction threshold, not a hard ceiling
+  env:
+    CLAUDE_CODE_MAX_CONTEXT_TOKENS: 200000   # harness ccb_agent environment
+  observed_max_context_tokens: "167699"     # runs.csv max_context_tokens
+  observed_compactions: "2"                # runs.csv compactions
+
+tools:
+  # Claude Code tool envelope (--disallowedTools). 35 tools, the list of the harness
+  # version this run executed (includes ListAgents, denied from the 2.1.270 enumeration on).
+  disallowed:
+    - WebSearch
+    - WebFetch
+    - ListMcpResources
+    - ReadMcpResource
+    - Task
+    - Agent
+    - Workflow
+    - Monitor
+    - CronCreate
+    - RemoteTrigger
+    - SendUserMessage
+    - PushNotification
+    - SendFeedback
+    - Artifact
+    - AskUserQuestion
+    - EnterPlanMode
+    - ExitPlanMode
+    - EnterWorktree
+    - ExitWorktree
+    - TaskOutput
+    - TaskStop
+    - ToolSearch
+    - Skill
+    - NotebookEdit
+    - TaskCreate
+    - TaskGet
+    - TaskList
+    - TaskUpdate
+    - SendMessage
+    - ScheduleWakeup
+    - DesignSync
+    - CronList
+    - CronDelete
+    - ReportFindings
+    - ListAgents
+
+resource_gate: true
+# PDF reads by the file tool fail softly and locally. Installed in every container from
+# the batch that started 2026-09-11 on, so present for this run (launcher version recorded in
+# run_meta provenance.launcher).
+
+network:
+  formal_condition: "open egress"
+  # runs.csv network_condition. The rerun uses one policy for every arm instead: the agent
+  # container has no route out, and an allowlist proxy passes the package index and the
+  # hosts of this arm's route only.
+  agent_allow_hosts: [pypi.org, files.pythonhosted.org]
+
+# Six hours of eligible time: wall time minus provider pauses credited under the rules
+# below. Source: runs.csv eligible_time_s and eligible_s (every ranked run 21600.1 to
+# 21613.6), run_meta budget_hours 6.0.
+budget:
+  eligible_seconds: 21600
+
+# Lifecycle constants of the harness. Identical in all seven harness versions the ranked runs
+# executed (their sha256 are listed in sciexam/agent/provenance.py). Sources: run_meta
+# harness.{snapshot_every_s, p1_turn_cap_s, stall_escalate_s, hard_fail_limit,
+# min_runtime_for_resume, termination_policy} and the harness constants named per line.
+lifecycle:
+  termination_policy: fixed_duration        # run_meta harness.termination_policy
+  phase1_turn_cap_s: 1800                   # run_meta harness.p1_turn_cap_s (P1_TURN_CAP_S)
+  phase1_max_attempts: 4                    # harness MAX_P1_ATTEMPTS
+  phase2a_cap_s: 5400                       # harness P2A_CAP_S (cap of the checks phase)
+  diagnostics_check_timeout_s: 420          # harness check_diagnostics_run timeout
+  diagnostics_repair_rounds: 2              # harness Phase 2A repair loop
+  snapshot_every_s: 300                     # run_meta harness.snapshot_every_s (SNAPSHOT_EVERY_S)
+  stall_escalate_s: 1200                    # run_meta harness.stall_escalate_s (STALL_ESCALATE_S)
+  hard_fail_limit: 3                        # run_meta harness.hard_fail_limit (HARD_FAIL_LIMIT)
+  min_runtime_for_resume_s: 5               # run_meta harness.min_runtime_for_resume
+  productive_fatal_limit: 8                 # harness PRODUCTIVE_FATAL_LIMIT
+  quota_wait_max_events: 12                 # harness QUOTA_WAIT_MAX_EVENTS
+  quota_wait_min_s: 5                       # harness QUOTA_WAIT_MIN_S
+  quota_wait_max_s: 21600                   # harness QUOTA_WAIT_MAX_S
+  quota_wait_recovery_margin_s: 15          # harness QUOTA_WAIT_RECOVERY_MARGIN_S (not credited)
+  pause_on_quota: true                      # harness PAUSE_ON_QUOTA
+  pause_on_provider_service: true           # harness PAUSE_ON_PROVIDER_SERVICE
+  provider_service_pause_granularity_s: 30  # harness PROVIDER_SERVICE_PAUSE_GRANULARITY_S
+  pause_max_per_provider_event_s: 600       # harness PAUSE_MAX_PER_PROVIDER_EVENT_S
+  pause_total_credit_cap_multiple: 1.0      # harness PAUSE_TOTAL_CREDIT_CAP_MULTIPLE
+  max_wall_multiple: 3.0                    # harness MAX_WALL_MULTIPLE (wall ceiling 64800 s)
+  stop_hook_block_limit: 3                  # harness _STOP_HOOK LIMIT
+  agent_uid: "1000:1000"                    # harness CCB_AGENT_UID default

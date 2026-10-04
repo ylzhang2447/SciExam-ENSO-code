@@ -1,0 +1,7 @@
+{
+ "arm": "dsflash",
+ "display_name": "DeepSeek V4.1 Flash",
+ "run_id": "main/dsflash",
+ "round": "round_08",
+ "calendar_offset": -1.0
+}

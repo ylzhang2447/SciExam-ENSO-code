@@ -1,0 +1,7 @@
+{
+ "arm": "gpt55",
+ "display_name": "GPT-5.5",
+ "run_id": "main/gpt55",
+ "round": "round_55",
+ "calendar_offset": 0.0
+}

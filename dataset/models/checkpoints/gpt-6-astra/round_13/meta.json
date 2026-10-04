@@ -1,0 +1,7 @@
+{
+ "arm": "gpt6astra",
+ "display_name": "GPT-6 Astra",
+ "run_id": "main/gpt6astra",
+ "round": "round_13",
+ "calendar_offset": -1.0
+}

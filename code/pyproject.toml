@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sciexam"
+version = "0.1.0"
+description = "SciExam-ENSO: grader, dataset tools and agent harness of a long-horizon ENSO modeling benchmark for AI agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "pandas>=2.0",
+    "xarray>=2023.1",
+    "netCDF4>=1.6",
+]
+
+[project.optional-dependencies]
+hub = ["huggingface_hub>=0.20"]
+numba = ["numba>=0.60"]
+figures = ["matplotlib==3.11.2", "pillow==12.1.1"]
+
+[project.scripts]
+sciexam = "sciexam.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["sciexam*"]
+
+[tool.setuptools.package-data]
+"sciexam.agent" = ["assets/*.*", "assets/conditions/*", "research/*.json", "research/fingerprints/*.json", "research/policies/*.json"]

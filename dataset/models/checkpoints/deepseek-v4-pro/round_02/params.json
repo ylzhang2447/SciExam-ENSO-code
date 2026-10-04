@@ -1,0 +1,51 @@
+{
+  "_comment": "ENSO 5-var diversity model. Nondim scales: T=7.5C, h=150m, u=1.5m/s, tau=5m/s, t=2mo.",
+  "t_scale_months": 2.0,
+  "season_peak_month": 12,
+
+  "R_E": 0.32,
+  "c_E": 0.58,
+  "g_E": 0.55,
+  "e_n": 0.35,
+  "g_asym": 0.0,
+  "adv_E": 0.03,
+  "cross_CE": 0.12,
+  "mbj_E": 0.0,
+
+  "R_C": 0.18,
+  "c_C": 0.55,
+  "g_C": 0.15,
+  "e_n_C": 0.20,
+  "adv_C": 0.05,
+  "wind_C": 0.18,
+  "cross_EC": 0.28,
+
+  "r_h": 0.25,
+  "alpha": 0.22,
+  "r_asym_h": 0.0,
+
+  "lambda_u": 1.5,
+  "kappa_u": 0.45,
+  "kappa_uh": 0.0,
+
+  "lambda_tau": 1.2,
+  "beta_E": 0.45,
+  "beta_C": 0.30,
+  "tau_nl": 0.02,
+
+  "b": 0.45,
+
+  "sigma_TC": 0.08,
+  "sigma_TE": 0.10,
+  "sigma_hW": 0.05,
+  "sigma_u": 0.12,
+  "sigma_tau": 0.25,
+
+  "s_cpl_amp": 0.25,
+  "s_noise_amp": 0.30,
+
+  "s_cpl_C_share": 0.4,
+  "noise_corr": 0.4,
+  "mult_TC": 0.0,
+  "mult_TE": 0.03
+}

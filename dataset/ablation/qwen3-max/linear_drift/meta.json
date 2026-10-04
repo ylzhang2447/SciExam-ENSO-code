@@ -1,0 +1,8 @@
+{
+ "arm": "qwen3max",
+ "display_name": "Qwen3-Max",
+ "candidate": "linear_drift",
+ "role": "automatic endpoint",
+ "family": "linear+additive",
+ "calendar_offset": -1.0
+}

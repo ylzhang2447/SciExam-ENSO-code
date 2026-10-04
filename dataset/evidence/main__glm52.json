@@ -1,0 +1,340 @@
+{
+ "run_id": "main/glm52",
+ "arm": "glm52",
+ "campaign_id": "formal6-20260910",
+ "archive": "run workspace as archived by the harness when Batch A ended (agent inputs that were byte-identical to the task tree were recorded by hash, not copied)",
+ "pointer_roots": {
+  "run": "the run's archive (see archive)",
+  "harness": "the harness state directory of the run host"
+ },
+ "values": {
+  "scaffold_version": {
+   "value": "Claude Code 2.1.223",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/6a66e02b-ff43-47d3-86b7-9e4d8bdd2759.jsonl",
+     "field": "version (every transcript record)"
+    },
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/a3687410-031f-43f4-a568-1aef423c3f46.jsonl",
+     "field": "version (every transcript record)"
+    },
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/e2d2e9cc-6c4f-42e2-9e59-adb76a7224d3.jsonl",
+     "field": "version (every transcript record)"
+    }
+   ],
+   "method": "the CLI version stamped on every record of the agent's own session transcripts (1993 records, 2.1.223: 1993)"
+  },
+  "route": {
+   "value": "gateway",
+   "evidence": [
+    {
+     "root": "harness",
+     "path": "otel/costlog/gateway_cost.jsonl.20260910-070455.reconciled",
+     "field": "rows for this model in the run window: 669"
+    }
+   ],
+   "method": "669 gateway ledger rows (one per model call) for this model inside the run window, each resolved to an OpenRouter generation record"
+  },
+  "provider_pin": {
+   "value": "Z.AI (669 of 669 generations)",
+   "evidence": [
+    {
+     "root": "harness",
+     "path": "report/reconcile/formal6-20260910.jsonl",
+     "field": "provider of each generation id of this run"
+    },
+    {
+     "root": "harness",
+     "path": "otel/costlog/gateway_cost.jsonl.20260910-070455.reconciled",
+     "field": "or_provider"
+    }
+   ],
+   "method": "provider field of the OpenRouter generation record fetched for every gateway call of the run (reconciliation)",
+   "configuration_claim": {
+    "provider_order": [
+     "z-ai"
+    ],
+    "allow_fallbacks": false
+   }
+  },
+  "reasoning_effort": {
+   "value": "high",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/6a66e02b-ff43-47d3-86b7-9e4d8bdd2759.jsonl",
+     "field": "effort (assistant records)"
+    },
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/a3687410-031f-43f4-a568-1aef423c3f46.jsonl",
+     "field": "effort (assistant records)"
+    },
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/e2d2e9cc-6c4f-42e2-9e59-adb76a7224d3.jsonl",
+     "field": "effort (assistant records)"
+    }
+   ],
+   "method": "the effort field Claude Code stamped on each assistant record (high/None: 1258)",
+   "configuration_claim": "run_meta runtime_provenance.effort = medium",
+   "note": "the harness passes --effort only to the claudesub scaffold, so the gateway scaffold ran at the CLI default. Whether the gateway forwarded the level to the provider is not recorded (the ledger shows reasoning tokens)"
+  },
+  "campaign_id": {
+   "value": "formal6-20260910",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 1,
+     "field": "event=batch_gate.go_line (GO 2026-09-09T21:31:05Z)"
+    },
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "experiment"
+    }
+   ],
+   "method": "the batch gate record at the top of the trajectory (admission and GO time) and the experiment name the harness wrote at admission"
+  },
+  "freeze_id": {
+   "value": "bae20218ec05f78a",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "freeze_guard.manifest_sha256, freeze_guard.mode, freeze_guard.enforced, freeze_guard.verdict"
+    }
+   ],
+   "method": "sha256 of the freeze manifest the freeze guard checked at admission (first 16 hex digits). Guard state: formal, enforced, verdict PASS",
+   "guard": "formal, enforced"
+  },
+  "eligible_s": {
+   "value": 21600.3,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 44,
+     "field": "event=quota_summary.eligible_elapsed_s"
+    }
+   ],
+   "method": "the harness eligible clock at the end of the run: wall time minus credited provider pauses"
+  },
+  "wall_s": {
+   "value": 21600.3,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 44,
+     "field": "event=quota_summary.wall_elapsed_s"
+    }
+   ],
+   "method": "wall time from the start event to the end of the run"
+  },
+  "credited_pauses": {
+   "value": 0,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 44,
+     "field": "event=quota_summary.quota_pause_events"
+    }
+   ],
+   "method": "count of eligible_pause events with credited seconds > 0 (0 s credited in total)",
+   "detail": []
+  },
+  "completion": {
+   "value": "complete",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 45,
+     "field": "event=end.status (complete)"
+    },
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 2,
+     "field": "event=start.budget_s (21600.0)"
+    }
+   ],
+   "method": "end status complete and eligible time at or above the eligible budget"
+  },
+  "max_context_tokens": {
+   "value": 227022,
+   "evidence": [
+    {
+     "root": "harness",
+     "path": "otel/costlog/gateway_cost.jsonl.20260910-070455.reconciled",
+     "line": 2962
+    }
+   ],
+   "method": "largest prompt_tokens (uncached plus cached input, as billed) over the 669 gateway calls of the run. 42 calls exceeded 200,000",
+   "configuration_claim": "run_meta harness.context_tokens = 200000 (configured working-context budget)",
+   "cross_check": {
+    "transcript_max": 225729,
+    "ptr": {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/e2d2e9cc-6c4f-42e2-9e59-adb76a7224d3.jsonl",
+     "line": 856
+    },
+    "note": "the transcript usage of gateway arms passes through the gateway translation and is not the billed figure"
+   }
+  },
+  "compactions": {
+   "value": 5,
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/6a66e02b-ff43-47d3-86b7-9e4d8bdd2759.jsonl",
+     "line": 677
+    },
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/e2d2e9cc-6c4f-42e2-9e59-adb76a7224d3.jsonl",
+     "line": 438
+    },
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/e2d2e9cc-6c4f-42e2-9e59-adb76a7224d3.jsonl",
+     "line": 861
+    },
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/e2d2e9cc-6c4f-42e2-9e59-adb76a7224d3.jsonl",
+     "line": 1070
+    },
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/e2d2e9cc-6c4f-42e2-9e59-adb76a7224d3.jsonl",
+     "line": 1362
+    }
+   ],
+   "method": "system records with subtype compact_boundary in the transcripts",
+   "pre_tokens": [
+    221966,
+    199407,
+    228892,
+    175706,
+    169554
+   ],
+   "cross_check": {
+    "telemetry_compaction_events": 5
+   }
+  },
+  "jin_pdf_read": {
+   "value": "yes",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/6a66e02b-ff43-47d3-86b7-9e4d8bdd2759.jsonl",
+     "line": 124,
+     "note": "Bash, 15000 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/6a66e02b-ff43-47d3-86b7-9e4d8bdd2759.jsonl",
+     "line": 129,
+     "note": "Bash, 15025 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/6a66e02b-ff43-47d3-86b7-9e4d8bdd2759.jsonl",
+     "line": 134,
+     "note": "Bash, 20000 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/6a66e02b-ff43-47d3-86b7-9e4d8bdd2759.jsonl",
+     "line": 138,
+     "note": "Bash, 15000 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/6a66e02b-ff43-47d3-86b7-9e4d8bdd2759.jsonl",
+     "line": 140,
+     "note": "Bash, 21591 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/6a66e02b-ff43-47d3-86b7-9e4d8bdd2759.jsonl",
+     "line": 130,
+     "note": "the decoder reports 'Total text length: 86591'"
+    }
+   ],
+   "method": "A call counts as reading the PDF when a tool call that touches the PDF (a Read of the .pdf, or a shell command naming the file or a PDF library) returns at least 1,500 characters containing at least three of: thermocline, recharge, discharge, zonal, equatorial, Kelvin, Rossby, oscillator, wind stress, Sverdrup. Each hit was then checked by hand."
+  },
+  "jin_pdf_method": {
+   "value": "shell: a hand-written LZW decoder in Python applied to the PDF streams (no PDF library, the Read tool failed because pdftoppm was not installed in the image and pip had no network), 86,591 characters decoded to /tmp/jin1997.txt and read in 15 to 22 k character slices"
+  },
+  "network_condition": {
+   "value": "none",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/6a66e02b-ff43-47d3-86b7-9e4d8bdd2759.jsonl",
+     "line": 102,
+     "note": "pip: 'Temporary failure in name resolution'"
+    },
+    {
+     "root": "run",
+     "path": ".home/.claude/projects/-work-formal6-20260910-glm52/e2d2e9cc-6c4f-42e2-9e59-adb76a7224d3.jsonl",
+     "line": 68,
+     "note": "pip: NewConnectionError, 'No matching distribution found for pymupdf'"
+    }
+   ],
+   "method": "pip install attempts by the agent failed on DNS resolution"
+  },
+  "cost_usd": {
+   "value": 21.477112,
+   "evidence": [
+    {
+     "root": "harness",
+     "path": "report/reconcile/formal6-20260910.jsonl",
+     "field": "total_cost of the 669 generation ids of this run"
+    },
+    {
+     "root": "harness",
+     "path": "report/cost_guard_state.json",
+     "field": "batches.formal6-20260910.completion.spend_usd"
+    }
+   ],
+   "method": "sum of OpenRouter per-generation total_cost over all 669 calls (100% priced). The account ground truth (key usage minus the batch baseline) is $199.95 for the three gateway arms of Batch A together, 1.2% above their per-generation sum of $197.54, and cannot be split by arm",
+   "account_delta_batch_usd": 199.952706
+  },
+  "cost_basis": {
+   "value": "per-generation reconciled (Batch A account delta $199.95 is shared by kimi, glm52, qwen3max)"
+  },
+  "checkpoints": {
+   "value": 33,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "field": "event=snapshot (33 records)"
+    },
+    {
+     "root": "harness",
+     "path": "snapshots/formal6-20260910/formal6-20260910__glm52/",
+     "field": "33 round_NN folders"
+    }
+   ],
+   "method": "eligible seconds of each snapshot = (snapshot time minus start time) minus credited pause seconds settled before it, with the clock frozen during a pause (the harness rule). Snapshot event round r is folder round_{r+1}. Folder modification times match the event times within 0.1 s. The computed values agree with the harness's own elapsed_min stamp to within 2.0 s (its 0.1 min rounding)",
+   "snapshot_folders": 33
+  }
+ },
+ "unknown": [],
+ "configuration_vs_evidence": [
+  "run_meta records reasoning effort medium, but every assistant record in the transcript (and the CLI telemetry) shows effort high: the gateway scaffold was never given --effort.",
+  "run_meta records a 200,000-token working-context budget, but the largest request carried 227,022 tokens."
+ ]
+}

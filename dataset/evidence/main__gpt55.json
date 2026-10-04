@@ -1,0 +1,389 @@
+{
+ "run_id": "main/gpt55",
+ "arm": "gpt55",
+ "campaign_id": "formal6J-20260913",
+ "archive": "run workspace, archived after the run (trajectory.jsonl, run_meta.json, agent transcripts)",
+ "pointer_roots": {
+  "run": "the run's archive (see archive)",
+  "harness": "the harness state directory of the run host"
+ },
+ "values": {
+  "scaffold_version": {
+   "value": "Codex CLI 0.146.1",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-02-29-01a0995c-2a48-7e23-94a7-75883e86dfc6.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.cli_version"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-04-56-01a0995e-6994-7023-9e6e-aef0ab932fe1.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.cli_version"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.cli_version"
+    }
+   ],
+   "method": "cli_version in the session_meta record of each Codex session rollout"
+  },
+  "route": {
+   "value": "codexsub",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-02-29-01a0995c-2a48-7e23-94a7-75883e86dfc6.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-04-56-01a0995e-6994-7023-9e6e-aef0ab932fe1.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    }
+   ],
+   "method": "Codex sessions report model_provider openai (ChatGPT subscription login, not the gateway), and the gateway ledger holds no row for this model in the run window"
+  },
+  "provider_pin": {
+   "value": "n/a (first-party subscription, no router)",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-02-29-01a0995c-2a48-7e23-94a7-75883e86dfc6.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-04-56-01a0995e-6994-7023-9e6e-aef0ab932fe1.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    }
+   ],
+   "method": "no router sits between this scaffold and its provider"
+  },
+  "reasoning_effort": {
+   "value": "medium",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-02-29-01a0995c-2a48-7e23-94a7-75883e86dfc6.jsonl",
+     "field": "turn_context.payload.effort"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-04-56-01a0995e-6994-7023-9e6e-aef0ab932fe1.jsonl",
+     "field": "turn_context.payload.effort"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "field": "turn_context.payload.effort"
+    }
+   ],
+   "method": "effort of every turn_context record in the Codex rollouts (123 turns)"
+  },
+  "campaign_id": {
+   "value": "formal6J-20260913",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 1,
+     "field": "event=batch_gate.go_line (GO 2026-09-13T06:02:27Z)"
+    },
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "experiment"
+    }
+   ],
+   "method": "the batch gate record at the top of the trajectory (admission and GO time) and the experiment name the harness wrote at admission"
+  },
+  "freeze_id": {
+   "value": "84f8db02bd32ebbe",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "freeze_guard.manifest_sha256, freeze_guard.mode, freeze_guard.enforced, freeze_guard.verdict"
+    }
+   ],
+   "method": "sha256 of the freeze manifest the freeze guard checked at admission (first 16 hex digits). Guard state: formal, enforced, verdict PASS",
+   "guard": "formal, enforced"
+  },
+  "eligible_s": {
+   "value": 21600.1,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 86,
+     "field": "event=quota_summary.eligible_elapsed_s"
+    }
+   ],
+   "method": "the harness eligible clock at the end of the run: wall time minus credited provider pauses"
+  },
+  "wall_s": {
+   "value": 21600.1,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 86,
+     "field": "event=quota_summary.wall_elapsed_s"
+    }
+   ],
+   "method": "wall time from the start event to the end of the run"
+  },
+  "credited_pauses": {
+   "value": 0,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 86,
+     "field": "event=quota_summary.quota_pause_events"
+    }
+   ],
+   "method": "count of eligible_pause events with credited seconds > 0 (0 s credited in total)",
+   "detail": []
+  },
+  "completion": {
+   "value": "complete",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 87,
+     "field": "event=end.status (complete)"
+    },
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 2,
+     "field": "event=start.budget_s (21600.0)"
+    }
+   ],
+   "method": "end status complete and eligible time at or above the eligible budget"
+  },
+  "max_context_tokens": {
+   "value": 200897,
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 6389
+    }
+   ],
+   "method": "last_token_usage.input_tokens of each token_count event in the Codex session rollouts (includes cached input). 3 of 2619 turns exceeded 200,000. Model_context_window 258400",
+   "configuration_claim": "run_meta harness.context_tokens = 200000 (configured working-context budget)"
+  },
+  "compactions": {
+   "value": 13,
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 1345
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 2453
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 3863
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 5278
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 6390
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 7997
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 9062
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 10963
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 12181
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 13393
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 15449
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 16776
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 18216
+    }
+   ],
+   "method": "records of type compacted in the Codex rollouts"
+  },
+  "jin_pdf_read": {
+   "value": "no",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-04-56-01a0995e-6994-7023-9e6e-aef0ab932fe1.jsonl",
+     "line": 29,
+     "note": "exec_command via pdftotext, 151 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-04-56-01a0995e-6994-7023-9e6e-aef0ab932fe1.jsonl",
+     "line": 41,
+     "note": "exec_command via pypdf, 224 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-04-56-01a0995e-6994-7023-9e6e-aef0ab932fe1.jsonl",
+     "line": 51,
+     "note": "exec_command via pypdf, 1123 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-04-56-01a0995e-6994-7023-9e6e-aef0ab932fe1.jsonl",
+     "line": 55,
+     "note": "exec_command via strings, 2219 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-04-56-01a0995e-6994-7023-9e6e-aef0ab932fe1.jsonl",
+     "line": 61,
+     "note": "exec_command via pypdf, 522 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-04-56-01a0995e-6994-7023-9e6e-aef0ab932fe1.jsonl",
+     "line": 77,
+     "note": "exec_command via mutool, 144 chars returned"
+    }
+   ],
+   "method": "A call counts as reading the PDF when a tool call that touches the PDF (a Read of the .pdf, or a shell command naming the file or a PDF library) returns at least 1,500 characters containing at least three of: thermocline, recharge, discharge, zonal, equatorial, Kelvin, Rossby, oscillator, wind stress, Sverdrup. Each hit was then checked by hand."
+  },
+  "jin_pdf_method": {
+   "value": "not read: pdftotext absent, pip refused by the externally-managed-environment guard, venv without ensurepip, apt without permission, strings gave no text"
+  },
+  "network_condition": {
+   "value": "open egress (batch evidence)",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-04-56-01a0995e-6994-7023-9e6e-aef0ab932fe1.jsonl",
+     "line": 51,
+     "note": "pip refused locally (externally-managed-environment), before any network access"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-04-56-01a0995e-6994-7023-9e6e-aef0ab932fe1.jsonl",
+     "line": 71,
+     "note": "apt-get refused locally (permission denied)"
+    },
+    {
+     "root": "sibling:main/dsflash",
+     "path": ".home/.claude/projects/-work-formal6J-20260913-dsflash/da8bfd30-4172-467f-ab74-538ea214c955.jsonl",
+     "line": 112,
+     "note": "pypdf downloaded from the index 2 minutes later"
+    }
+   ],
+   "method": "this agent's install attempts failed locally and never reached the network. The other gateway arm of the same batch downloaded from the index"
+  },
+  "cost_usd": {
+   "value": "subscription",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-02-29-01a0995c-2a48-7e23-94a7-75883e86dfc6.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-04-56-01a0995e-6994-7023-9e6e-aef0ab932fe1.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T06-09-07-01a09962-3f1b-7632-81fc-2f88cb50d5eb.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    }
+   ],
+   "method": "no per-token charge: subscription (OpenAI, Codex CLI subscription login). The gateway account for the batch moved by $2.434471 over the batch window, none of it from this arm"
+  },
+  "cost_basis": {
+   "value": "subscription (OpenAI, Codex CLI subscription login)"
+  },
+  "checkpoints": {
+   "value": 71,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "field": "event=snapshot (71 records)"
+    },
+    {
+     "root": "harness",
+     "path": "snapshots/formal6J-20260913/formal6J-20260913__gpt55/",
+     "field": "71 round_NN folders"
+    }
+   ],
+   "method": "eligible seconds of each snapshot = (snapshot time minus start time) minus credited pause seconds settled before it, with the clock frozen during a pause (the harness rule). Snapshot event round r is folder round_{r+1}. Folder modification times match the event times within 0.1 s. The computed values agree with the harness's own elapsed_min stamp to within 3.0 s (its 0.1 min rounding)",
+   "snapshot_folders": 71
+  }
+ },
+ "unknown": [],
+ "configuration_vs_evidence": [
+  "run_meta records a 200,000-token working-context budget, but the largest request carried 200,897 tokens."
+ ]
+}

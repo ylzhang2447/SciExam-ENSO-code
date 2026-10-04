@@ -1,0 +1,5 @@
+condition,run_id,external_access,calendar_offset,best_round,best,final_round,final,best_statistics,best_physics,best_predictivity,best_event_freq,best_diversity_bivariate
+Offline (formal run),main/fable51,None,0.0,round_37,0.5309136073343752,round_56,0.5154889786306145,0.7409120244479176,0.6324,0.2973,0.6565407567308069,0.81
+Years anonymized,fable_conditions/years_anonymised,None,-1.0,round_42,0.4818670060555865,round_68,0.46268988797965016,0.6556313689786588,0.5761549324845493,0.28082778904156036,0.7565789767980309,0.833
+Web access 1,fable_conditions/web_literature_and_data,"Literature, data",-1.0,round_03,0.47507929538462407,round_21,0.3864412352448451,0.6378609904604255,0.5724085223158829,0.27999610387932883,0.5855065503466765,0.833
+Web access 2,fable_conditions/web_literature_only,Literature,0.0,round_27,0.5282819,round_45,0.4063266,0.797973,0.5555,0.3056,0.815484,0.881

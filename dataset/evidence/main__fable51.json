@@ -1,0 +1,346 @@
+{
+ "run_id": "main/fable51",
+ "arm": "fable51",
+ "campaign_id": "formal6N-20260915",
+ "archive": "run workspace, archived after the run (trajectory.jsonl, run_meta.json, agent transcripts)",
+ "pointer_roots": {
+  "run": "the run's archive (see archive)",
+  "harness": "the harness state directory of the run host"
+ },
+ "values": {
+  "scaffold_version": {
+   "value": "Claude Code 2.1.270",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/07015df1-de1f-4b22-ae66-29ea4d51f92c.jsonl",
+     "field": "version (every transcript record)"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/8ffbf504-a48d-4902-9b45-500106d988d3.jsonl",
+     "field": "version (every transcript record)"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/abf7d419-ed40-4034-84a9-e08b8f0db87f.jsonl",
+     "field": "version (every transcript record)"
+    }
+   ],
+   "method": "the CLI version stamped on every record of the agent's own session transcripts (3362 records, 2.1.270: 3362)"
+  },
+  "route": {
+   "value": "claudesub",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 3,
+     "field": "event=cli_identity_verified.scaffold"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/07015df1-de1f-4b22-ae66-29ea4d51f92c.jsonl",
+     "field": "message.model and requestId of assistant records"
+    }
+   ],
+   "method": "the harness identity check at launch names the claudesub scaffold, the transcript records Anthropic API request ids and model claude-fable-5-1, and the gateway ledger holds no row for this model in the run window"
+  },
+  "provider_pin": {
+   "value": "n/a (first-party subscription, no router)",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 3,
+     "field": "event=cli_identity_verified.scaffold"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/07015df1-de1f-4b22-ae66-29ea4d51f92c.jsonl",
+     "field": "message.model and requestId of assistant records"
+    }
+   ],
+   "method": "no router sits between this scaffold and its provider"
+  },
+  "reasoning_effort": {
+   "value": "medium",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/07015df1-de1f-4b22-ae66-29ea4d51f92c.jsonl",
+     "field": "effort (assistant records)"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/8ffbf504-a48d-4902-9b45-500106d988d3.jsonl",
+     "field": "effort (assistant records)"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/abf7d419-ed40-4034-84a9-e08b8f0db87f.jsonl",
+     "field": "effort (assistant records)"
+    }
+   ],
+   "method": "the effort field Claude Code stamped on each assistant record (medium/medium: 1319)",
+   "configuration_claim": "run_meta runtime_provenance.effort = medium"
+  },
+  "campaign_id": {
+   "value": "formal6N-20260915",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 1,
+     "field": "event=batch_gate.go_line (GO 2026-09-15T03:20:24Z)"
+    },
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "experiment"
+    }
+   ],
+   "method": "the batch gate record at the top of the trajectory (admission and GO time) and the experiment name the harness wrote at admission"
+  },
+  "freeze_id": {
+   "value": "239a1b1a880d1f2f",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "freeze_guard.manifest_sha256, freeze_guard.mode, freeze_guard.enforced, freeze_guard.verdict"
+    }
+   ],
+   "method": "sha256 of the freeze manifest the freeze guard checked at admission (first 16 hex digits). Guard state: formal, enforced, verdict PASS",
+   "guard": "formal, enforced"
+  },
+  "eligible_s": {
+   "value": 21600.4,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 176,
+     "field": "event=quota_summary.eligible_elapsed_s"
+    }
+   ],
+   "method": "the harness eligible clock at the end of the run: wall time minus credited provider pauses"
+  },
+  "wall_s": {
+   "value": 41383.4,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 176,
+     "field": "event=quota_summary.wall_elapsed_s"
+    }
+   ],
+   "method": "wall time from the start event to the end of the run"
+  },
+  "credited_pauses": {
+   "value": 3,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 18,
+     "field": "event=eligible_pause.credited_pause_s"
+    },
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 56,
+     "field": "event=eligible_pause.credited_pause_s"
+    },
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 127,
+     "field": "event=eligible_pause.credited_pause_s"
+    }
+   ],
+   "method": "count of eligible_pause events with credited seconds > 0 (19783.0 s credited in total)",
+   "detail": [
+    {
+     "reason": "quota",
+     "credited_s": 1393.5,
+     "waited_s": 1408.5
+    },
+    {
+     "reason": "quota",
+     "credited_s": 11257.4,
+     "waited_s": 11272.4
+    },
+    {
+     "reason": "quota",
+     "credited_s": 7132.1,
+     "waited_s": 7147.1
+    }
+   ]
+  },
+  "completion": {
+   "value": "complete",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 177,
+     "field": "event=end.status (complete)"
+    },
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 2,
+     "field": "event=start.budget_s (21600.0)"
+    }
+   ],
+   "method": "end status complete and eligible time at or above the eligible budget"
+  },
+  "max_context_tokens": {
+   "value": 166944,
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/07015df1-de1f-4b22-ae66-29ea4d51f92c.jsonl",
+     "line": 2167
+    }
+   ],
+   "method": "Anthropic-format usage per API message in the Claude Code transcript (input + cache_read + cache_creation), deduplicated by message id. 0 of 625 API messages exceeded 200,000",
+   "configuration_claim": "run_meta harness.context_tokens = 200000 (configured working-context budget)"
+  },
+  "compactions": {
+   "value": 7,
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/07015df1-de1f-4b22-ae66-29ea4d51f92c.jsonl",
+     "line": 351
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/07015df1-de1f-4b22-ae66-29ea4d51f92c.jsonl",
+     "line": 749
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/07015df1-de1f-4b22-ae66-29ea4d51f92c.jsonl",
+     "line": 1281
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/07015df1-de1f-4b22-ae66-29ea4d51f92c.jsonl",
+     "line": 1601
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/07015df1-de1f-4b22-ae66-29ea4d51f92c.jsonl",
+     "line": 2178
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/07015df1-de1f-4b22-ae66-29ea4d51f92c.jsonl",
+     "line": 2833
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/07015df1-de1f-4b22-ae66-29ea4d51f92c.jsonl",
+     "line": 3514
+    }
+   ],
+   "method": "system records with subtype compact_boundary in the transcripts",
+   "pre_tokens": [
+    169638,
+    167190,
+    167553,
+    168085,
+    169967,
+    167726,
+    168054
+   ]
+  },
+  "jin_pdf_read": {
+   "value": "no",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/8ffbf504-a48d-4902-9b45-500106d988d3.jsonl",
+     "line": 31,
+     "note": "Bash via pypdf, 177 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/8ffbf504-a48d-4902-9b45-500106d988d3.jsonl",
+     "line": 38,
+     "note": "Read via Read tool on the PDF, 219 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/abf7d419-ed40-4034-84a9-e08b8f0db87f.jsonl",
+     "line": 50,
+     "note": "Bash, 161 chars returned"
+    }
+   ],
+   "method": "A call counts as reading the PDF when a tool call that touches the PDF (a Read of the .pdf, or a shell command naming the file or a PDF library) returns at least 1,500 characters containing at least three of: thermocline, recharge, discharge, zonal, equatorial, Kelvin, Rossby, oscillator, wind stress, Sverdrup. Each hit was then checked by hand."
+  },
+  "jin_pdf_method": {
+   "value": "not read: the Read tool answered that PDF files are not read by this tool and pointed to Bash or python, no PDF library in the image and none installed"
+  },
+  "network_condition": {
+   "value": "UNKNOWN",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "network_audit.json",
+     "field": "tools_used (Bash only, no network command)"
+    }
+   ],
+   "method": "agent-side network requests in the transcripts",
+   "reason": "the agent made no network request during the run (no package install, download or web tool call), so the network condition was never exercised and is not observable from its records. Single-arm batch, so no sibling evidence either"
+  },
+  "cost_usd": {
+   "value": "subscription",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 3,
+     "field": "event=cli_identity_verified.scaffold"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6N-20260915-fable51/07015df1-de1f-4b22-ae66-29ea4d51f92c.jsonl",
+     "field": "message.model and requestId of assistant records"
+    }
+   ],
+   "method": "no per-token charge: subscription (Anthropic, Claude Code subscription login). The gateway account for the batch moved by $0.002474 over the batch window, none of it from this arm"
+  },
+  "cost_basis": {
+   "value": "subscription (Anthropic, Claude Code subscription login)"
+  },
+  "checkpoints": {
+   "value": 56,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "field": "event=snapshot (56 records)"
+    },
+    {
+     "root": "harness",
+     "path": "snapshots/formal6N-20260915/formal6N-20260915__fable51/",
+     "field": "56 round_NN folders"
+    }
+   ],
+   "method": "eligible seconds of each snapshot = (snapshot time minus start time) minus credited pause seconds settled before it, with the clock frozen during a pause (the harness rule). Snapshot event round r is folder round_{r+1}. Folder modification times match the event times within 0.1 s. The computed values agree with the harness's own elapsed_min stamp to within 3.0 s (its 0.1 min rounding)",
+   "snapshot_folders": 56
+  }
+ },
+ "unknown": [
+  {
+   "field": "network_condition",
+   "reason": "the agent made no network request during the run (no package install, download or web tool call), so the network condition was never exercised and is not observable from its records. Single-arm batch, so no sibling evidence either"
+  }
+ ],
+ "configuration_vs_evidence": []
+}

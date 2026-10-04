@@ -1,0 +1,349 @@
+{
+ "run_id": "fable_conditions/web_literature_and_data",
+ "arm": "fable51_web",
+ "campaign_id": "formal6W-20260918",
+ "archive": "run workspace, archived after the run (trajectory.jsonl, run_meta.json, agent transcripts)",
+ "pointer_roots": {
+  "run": "the run's archive (see archive)",
+  "harness": "the harness state directory of the run host"
+ },
+ "values": {
+  "scaffold_version": {
+   "value": "Claude Code 2.1.270",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/5497dcbd-4bcb-40b3-bef4-27ac388ba4d4.jsonl",
+     "field": "version (every transcript record)"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/5f8e2c14-4896-4f13-b81c-75b90f945720.jsonl",
+     "field": "version (every transcript record)"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/c591e5d3-fc41-4bf4-808b-e909b6e09b75.jsonl",
+     "field": "version (every transcript record)"
+    }
+   ],
+   "method": "the CLI version stamped on every record of the agent's own session transcripts (1430 records, 2.1.270: 1430)"
+  },
+  "route": {
+   "value": "claudesub",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 4,
+     "field": "event=cli_identity_verified.scaffold"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/5497dcbd-4bcb-40b3-bef4-27ac388ba4d4.jsonl",
+     "field": "message.model and requestId of assistant records"
+    }
+   ],
+   "method": "the harness identity check at launch names the claudesub scaffold, the transcript records Anthropic API request ids and model claude-fable-5-1, and the gateway ledger holds no row for this model in the run window"
+  },
+  "provider_pin": {
+   "value": "n/a (first-party subscription, no router)",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 4,
+     "field": "event=cli_identity_verified.scaffold"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/5497dcbd-4bcb-40b3-bef4-27ac388ba4d4.jsonl",
+     "field": "message.model and requestId of assistant records"
+    }
+   ],
+   "method": "no router sits between this scaffold and its provider"
+  },
+  "reasoning_effort": {
+   "value": "medium",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/5497dcbd-4bcb-40b3-bef4-27ac388ba4d4.jsonl",
+     "field": "effort (assistant records)"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/5f8e2c14-4896-4f13-b81c-75b90f945720.jsonl",
+     "field": "effort (assistant records)"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/c591e5d3-fc41-4bf4-808b-e909b6e09b75.jsonl",
+     "field": "effort (assistant records)"
+    }
+   ],
+   "method": "the effort field Claude Code stamped on each assistant record (medium/medium: 527)",
+   "configuration_claim": "run_meta runtime_provenance.effort = medium"
+  },
+  "campaign_id": {
+   "value": "formal6W-20260918",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 2,
+     "field": "event=batch_gate.go_line (GO 2026-09-18T05:56:43Z)"
+    },
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "experiment"
+    }
+   ],
+   "method": "the batch gate record at the top of the trajectory (admission and GO time) and the experiment name the harness wrote at admission"
+  },
+  "freeze_id": {
+   "value": "8e2e73ea274ae1c2",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "freeze_guard.manifest_sha256, freeze_guard.mode, freeze_guard.enforced, freeze_guard.verdict"
+    }
+   ],
+   "method": "sha256 of the freeze manifest the freeze guard checked at admission (first 16 hex digits). Guard state: formal, enforced, verdict PASS",
+   "guard": "formal, enforced"
+  },
+  "eligible_s": {
+   "value": 21600.1,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 40,
+     "field": "event=quota_summary.eligible_elapsed_s"
+    }
+   ],
+   "method": "the harness eligible clock at the end of the run: wall time minus credited provider pauses"
+  },
+  "wall_s": {
+   "value": 21600.1,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 40,
+     "field": "event=quota_summary.wall_elapsed_s"
+    }
+   ],
+   "method": "wall time from the start event to the end of the run"
+  },
+  "credited_pauses": {
+   "value": 0,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 40,
+     "field": "event=quota_summary.quota_pause_events"
+    }
+   ],
+   "method": "count of eligible_pause events with credited seconds > 0 (0 s credited in total)",
+   "detail": []
+  },
+  "completion": {
+   "value": "complete",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 41,
+     "field": "event=end.status (complete)"
+    },
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 3,
+     "field": "event=start.budget_s (21600.0)"
+    }
+   ],
+   "method": "end status complete and eligible time at or above the eligible budget"
+  },
+  "max_context_tokens": {
+   "value": 168172,
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/5f8e2c14-4896-4f13-b81c-75b90f945720.jsonl",
+     "line": 619
+    }
+   ],
+   "method": "Anthropic-format usage per API message in the Claude Code transcript (input + cache_read + cache_creation), deduplicated by message id. 0 of 265 API messages exceeded 200,000",
+   "configuration_claim": "run_meta harness.context_tokens = 200000 (configured working-context budget)"
+  },
+  "compactions": {
+   "value": 4,
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/5f8e2c14-4896-4f13-b81c-75b90f945720.jsonl",
+     "line": 301
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/5f8e2c14-4896-4f13-b81c-75b90f945720.jsonl",
+     "line": 630
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/5f8e2c14-4896-4f13-b81c-75b90f945720.jsonl",
+     "line": 1096
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/5f8e2c14-4896-4f13-b81c-75b90f945720.jsonl",
+     "line": 1504
+    }
+   ],
+   "method": "system records with subtype compact_boundary in the transcripts",
+   "pre_tokens": [
+    168225,
+    169438,
+    168809,
+    168676
+   ]
+  },
+  "jin_pdf_read": {
+   "value": "no",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/c591e5d3-fc41-4bf4-808b-e909b6e09b75.jsonl",
+     "line": 31,
+     "note": "Bash via pdftotext, 105 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/c591e5d3-fc41-4bf4-808b-e909b6e09b75.jsonl",
+     "line": 38,
+     "note": "Bash via pypdf, 2584 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/c591e5d3-fc41-4bf4-808b-e909b6e09b75.jsonl",
+     "line": 43,
+     "note": "Read via Read tool on the PDF, 219 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/c591e5d3-fc41-4bf4-808b-e909b6e09b75.jsonl",
+     "line": 47,
+     "note": "Bash via pdfminer, 266 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/c591e5d3-fc41-4bf4-808b-e909b6e09b75.jsonl",
+     "line": 52,
+     "note": "Bash via pypdf, 392 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/c591e5d3-fc41-4bf4-808b-e909b6e09b75.jsonl",
+     "line": 56,
+     "note": "Bash via pypdf, 222 chars returned"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/c591e5d3-fc41-4bf4-808b-e909b6e09b75.jsonl",
+     "line": 104,
+     "note": "WebFetch api.semanticscholar.org record of Jin 1997 Part I"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/c591e5d3-fc41-4bf4-808b-e909b6e09b75.jsonl",
+     "line": 80,
+     "note": "WebFetch journals.ametsoc.org Jin 1997 page, HTTP 403"
+    }
+   ],
+   "method": "A call counts as reading the PDF when a tool call that touches the PDF (a Read of the .pdf, or a shell command naming the file or a PDF library) returns at least 1,500 characters containing at least three of: thermocline, recharge, discharge, zonal, equatorial, Kelvin, Rossby, oscillator, wind stress, Sverdrup. Each hit was then checked by hand."
+  },
+  "jin_pdf_method": {
+   "value": "not read: the Read tool answered that PDF files are not read by this tool and pointed to Bash or python, pip blocked by the research proxy (no matching distribution), zlib decoding produced no text. The Jin 1997 record (title and abstract) was fetched from Semantic Scholar through WebFetch. The journal page returned 403"
+  },
+  "network_condition": {
+   "value": "web research proxy, literature and data",
+   "evidence": [
+    {
+     "root": "harness",
+     "path": "research/logs/formal6W-20260918__fable51_web.jsonl",
+     "line": 1,
+     "field": "policy_loaded.policy_version = fable51_web-research-policy-v5"
+    },
+    {
+     "root": "harness",
+     "path": "research/logs/formal6W-20260918__fable51_web.jsonl",
+     "line": 52,
+     "note": "allow www.cpc.ncep.noaa.gov (ONI data page)"
+    },
+    {
+     "root": "harness",
+     "path": "research/logs/formal6W-20260918__fable51_web.jsonl",
+     "line": 58,
+     "note": "allow www.cpc.ncep.noaa.gov"
+    },
+    {
+     "root": "harness",
+     "path": "research/logs/formal6W-20260918__fable51_web.jsonl",
+     "line": 63,
+     "note": "allow www.ncei.noaa.gov/access/monitoring"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/c591e5d3-fc41-4bf4-808b-e909b6e09b75.jsonl",
+     "line": 79,
+     "note": "WebFetch of the CPC ONI page, content delivered"
+    }
+   ],
+   "method": "proxy decision log: 14 GET requests allowed, 3 of them to observational data hosts. 606 non-GET requests and 236 telemetry uploads refused"
+  },
+  "cost_usd": {
+   "value": "subscription",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 4,
+     "field": "event=cli_identity_verified.scaffold"
+    },
+    {
+     "root": "run",
+     "path": ".claudecfg/projects/-work-formal6W-20260918-fable51-web/5497dcbd-4bcb-40b3-bef4-27ac388ba4d4.jsonl",
+     "field": "message.model and requestId of assistant records"
+    }
+   ],
+   "method": "no per-token charge: subscription (Anthropic, Claude Code subscription login). The gateway account for the batch moved by $0.004948 over the batch window, none of it from this arm"
+  },
+  "cost_basis": {
+   "value": "subscription (Anthropic, Claude Code subscription login)"
+  },
+  "checkpoints": {
+   "value": 21,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "field": "event=snapshot (21 records)"
+    },
+    {
+     "root": "harness",
+     "path": "snapshots/formal6W-20260918/formal6W-20260918__fable51_web/",
+     "field": "21 round_NN folders"
+    }
+   ],
+   "method": "eligible seconds of each snapshot = (snapshot time minus start time) minus credited pause seconds settled before it, with the clock frozen during a pause (the harness rule). Snapshot event round r is folder round_{r+1}. Folder modification times match the event times within 0.1 s. The computed values agree with the harness's own elapsed_min stamp to within 0.5 s (its 0.1 min rounding)",
+   "snapshot_folders": 21
+  }
+ },
+ "unknown": [],
+ "configuration_vs_evidence": []
+}

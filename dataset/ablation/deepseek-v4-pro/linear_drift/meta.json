@@ -1,0 +1,8 @@
+{
+ "arm": "deepseek",
+ "display_name": "DeepSeek V4 Pro",
+ "candidate": "linear_drift",
+ "role": "vote representative",
+ "family": "linear+multiplicative",
+ "calendar_offset": -1.0
+}

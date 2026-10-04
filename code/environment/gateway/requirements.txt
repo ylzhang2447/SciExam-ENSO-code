@@ -1,0 +1,27 @@
+# LiteLLM 1.83.9 and the dependencies of its `proxy` extra, without litellm-enterprise and
+# without litellm-proxy-extras. Versions are the ones litellm 1.83.9 pins for that extra.
+litellm==1.83.9
+gunicorn==23.0.0
+uvicorn==0.33.0
+uvloop==0.21.0
+fastapi==0.124.4
+backoff==2.2.1
+pyyaml==6.0.3
+rq==2.7.0
+orjson==3.10.15
+apscheduler==3.11.2
+fastapi-sso==0.16.0
+pyjwt==2.11.0
+python-multipart==0.0.20
+cryptography==46.0.7
+pynacl==1.6.2
+websockets==15.0.1
+boto3==1.42.59
+azure-identity==1.25.2
+azure-storage-blob==12.28.0
+mcp==1.26.0
+restrictedpython==8.1
+rich==13.9.4
+polars==1.38.1
+soundfile==0.12.1
+pyroscope-io==0.8.16

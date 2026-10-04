@@ -1,0 +1,147 @@
+# Arm configuration for `sciexam run-agent`: Claude Fable 5.1 under the condition
+# years_anonymised (runs.csv run_id fable_conditions/years_anonymised). It is the offline arm
+# agents/fable51.yaml with the changes named in the condition block, and `load_arm` checks
+# that nothing else differs. Every value names its source. runs.csv and
+# evidence/fable_conditions__years_anonymised.json are the dataset files. run_meta, the
+# trajectory, the proxy decision log and the freeze manifest are the formal run records.
+arm: fable51_years_anonymised
+display_name: Claude Fable 5.1             # runs.csv display_name
+run_id: fable_conditions/years_anonymised   # runs.csv run_id
+campaign_id: anonY6-20260921    # runs.csv campaign_id (the batch this run belonged to)
+
+condition:
+  name: years_anonymised             # runs.csv condition
+  description: "offline, calendar years replaced by relative labels"   # runs.csv condition_description
+  baseline_arm: fable51              # agents/fable51.yaml, equal in every other value
+  task_tree: years_anonymised
+  # Built from the dataset task text and the four raw data files (sciexam/agent/anonymise.py):
+  # observation years in data_processing.md and interface.md become labels Y001-01 .. Y035-12,
+  # product names are removed and a note says the calendar years are synthetic, the data
+  # files are renamed and rewritten with the time epoch shifted by 244 years. Phase 1 is
+  # graded through the private label map. Source: the run's task_prompt event (files and
+  # tree hash) and the admission manifest of the run (builder, shift, renames).
+  network: allowlist                 # offline like the baseline arm (no research proxy)
+  research_policy: null
+  undenied_tools: []                 # run_meta envelope claude-code-envelope-v2
+
+scaffold:
+  name: claude-code                  # runs.csv scaffold
+  version: "2.1.270"                  # runs.csv scaffold_version
+  npm_package: "@anthropic-ai/claude-code"
+  binary: bin/claude.exe             # the file the harness hashed (run_meta runtime_provenance.cli_path)
+  binary_sha256: 3a624a5a7cd79bbad4d32bd7db36f1197ecf458bc5bf1e2aed81834a01ad3ef0
+  # run_meta runtime_provenance.cli_sha256 (checked at image build and before the run)
+
+route:
+  kind: subscription                 # runs.csv route_observed claudesub
+  product: Anthropic subscription    # runs.csv route
+  model_id: claude-fable-5-1             # runs.csv model_id, passed as --model
+  provider_order: []                 # runs.csv provider_pin: n/a (first-party subscription, no router)
+  allow_fallbacks: false
+  agent_hosts: [api.anthropic.com, claude.ai]
+  # model and sign-in hosts of the Claude subscription route (formal arm record hosts)
+
+reasoning:
+  effort: medium                     # runs.csv reasoning_effort, harness CLAUDE_SUB_EFFORT
+  pass_effort_flag: true             # the harness passed --effort medium on this route
+
+context:
+  working_context_tokens: 200000   # freeze manifest arms.claude-fable-5-1.context_policy
+  mechanism: Claude Code auto-compact window override
+  enforced: true
+  env:
+    CLAUDE_CODE_MAX_CONTEXT_TOKENS: 200000   # harness claude_sub_agent environment
+    CLAUDE_CODE_AUTO_COMPACT_WINDOW: 200000  # harness claude_sub_agent environment of this run
+  observed_max_context_tokens: "167659"     # runs.csv max_context_tokens
+  observed_compactions: "3"                # runs.csv compactions
+
+provider_signals:
+  classify_failed_turns: true
+  # whether a failed turn is scanned for a provider allocation or service message, so a
+  # stated reset is paused and credited. Present in the harness version of this run: yes
+
+tools:
+  # Claude Code tool envelope (--disallowedTools): the 35 tools of the baseline arm
+  # (run_meta execution_envelope_version claude-code-envelope-v2).
+  disallowed:
+    - WebSearch
+    - WebFetch
+    - ListMcpResources
+    - ReadMcpResource
+    - Task
+    - Agent
+    - Workflow
+    - Monitor
+    - CronCreate
+    - RemoteTrigger
+    - SendUserMessage
+    - PushNotification
+    - SendFeedback
+    - Artifact
+    - AskUserQuestion
+    - EnterPlanMode
+    - ExitPlanMode
+    - EnterWorktree
+    - ExitWorktree
+    - TaskOutput
+    - TaskStop
+    - ToolSearch
+    - Skill
+    - NotebookEdit
+    - TaskCreate
+    - TaskGet
+    - TaskList
+    - TaskUpdate
+    - SendMessage
+    - ScheduleWakeup
+    - DesignSync
+    - CronList
+    - CronDelete
+    - ReportFindings
+    - ListAgents
+
+resource_gate: true
+# PDF reads by the file tool fail softly and locally. Installed in every container from
+# the batch that started 2026-09-11 on, so present for this run (launcher version recorded in
+# run_meta provenance.launcher).
+
+network:
+  formal_condition: "UNKNOWN: the agent made no network request"
+  # runs.csv network_condition. The rerun uses the policy of every arm: the agent container has
+  # no route out, and an allowlist proxy passes the package index and the route hosts only.
+  agent_allow_hosts: [pypi.org, files.pythonhosted.org]
+
+# Six hours of eligible time: wall time minus provider pauses credited under the rules
+# below. Source: runs.csv eligible_time_s and eligible_s (every ranked run 21600.1 to
+# 21613.6), run_meta budget_hours 6.0.
+budget:
+  eligible_seconds: 21600
+
+# Lifecycle constants of the harness. Identical in all seven harness versions the ranked runs
+# executed (their sha256 are listed in sciexam/agent/provenance.py). Sources: run_meta
+# harness.{snapshot_every_s, p1_turn_cap_s, stall_escalate_s, hard_fail_limit,
+# min_runtime_for_resume, termination_policy} and the harness constants named per line.
+lifecycle:
+  termination_policy: fixed_duration        # run_meta harness.termination_policy
+  phase1_turn_cap_s: 1800                   # run_meta harness.p1_turn_cap_s (P1_TURN_CAP_S)
+  phase1_max_attempts: 4                    # harness MAX_P1_ATTEMPTS
+  phase2a_cap_s: 5400                       # harness P2A_CAP_S (cap of the checks phase)
+  diagnostics_check_timeout_s: 420          # harness check_diagnostics_run timeout
+  diagnostics_repair_rounds: 2              # harness Phase 2A repair loop
+  snapshot_every_s: 300                     # run_meta harness.snapshot_every_s (SNAPSHOT_EVERY_S)
+  stall_escalate_s: 1200                    # run_meta harness.stall_escalate_s (STALL_ESCALATE_S)
+  hard_fail_limit: 3                        # run_meta harness.hard_fail_limit (HARD_FAIL_LIMIT)
+  min_runtime_for_resume_s: 5               # run_meta harness.min_runtime_for_resume
+  productive_fatal_limit: 8                 # harness PRODUCTIVE_FATAL_LIMIT
+  quota_wait_max_events: 12                 # harness QUOTA_WAIT_MAX_EVENTS
+  quota_wait_min_s: 5                       # harness QUOTA_WAIT_MIN_S
+  quota_wait_max_s: 21600                   # harness QUOTA_WAIT_MAX_S
+  quota_wait_recovery_margin_s: 15          # harness QUOTA_WAIT_RECOVERY_MARGIN_S (not credited)
+  pause_on_quota: true                      # harness PAUSE_ON_QUOTA
+  pause_on_provider_service: true           # harness PAUSE_ON_PROVIDER_SERVICE
+  provider_service_pause_granularity_s: 30  # harness PROVIDER_SERVICE_PAUSE_GRANULARITY_S
+  pause_max_per_provider_event_s: 600       # harness PAUSE_MAX_PER_PROVIDER_EVENT_S
+  pause_total_credit_cap_multiple: 1.0      # harness PAUSE_TOTAL_CREDIT_CAP_MULTIPLE
+  max_wall_multiple: 3.0                    # harness MAX_WALL_MULTIPLE (wall ceiling 64800 s)
+  stop_hook_block_limit: 3                  # harness _STOP_HOOK LIMIT
+  agent_uid: "1000:1000"                    # harness CCB_AGENT_UID default

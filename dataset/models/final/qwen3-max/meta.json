@@ -1,0 +1,8 @@
+{
+ "arm": "qwen3max",
+ "display_name": "Qwen3-Max",
+ "run_id": "main/qwen3max",
+ "round": "round_78",
+ "role": "final",
+ "calendar_offset": -1.0
+}

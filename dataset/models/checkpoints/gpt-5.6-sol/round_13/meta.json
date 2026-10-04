@@ -1,0 +1,7 @@
+{
+ "arm": "gpt56",
+ "display_name": "GPT-5.6-Sol",
+ "run_id": "main/gpt56",
+ "round": "round_13",
+ "calendar_offset": -1.0
+}

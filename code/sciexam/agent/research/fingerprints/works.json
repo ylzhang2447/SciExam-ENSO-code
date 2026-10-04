@@ -1,0 +1,96 @@
+{
+ "fingerprint_set_version": "prohibited-works-v1-hashed",
+ "note": "The works named in the task's blacklist.txt. Every identifier, title and phrase is stored as a sha256 hash: arXiv identifiers and DOIs lowercased, titles and phrases as their normalised words (policy.normalize_words) joined by one space, titles also joined without spaces.",
+ "works": [
+  {
+   "id": "blacklist_diversity_model",
+   "arxiv": [
+    "d392cc5673c3cdb277f07732bb61906f71ddbbcdff2c68b4d01a8894aeeca48f"
+   ],
+   "doi": [
+    {
+     "chars": 20,
+     "sha256": "c8b020228b8e4f4c9de67907cee9e1dc4c4d0ae0e399848729c87a2974f61054"
+    },
+    {
+     "chars": 25,
+     "sha256": "5cb0e57ec115b9f1f368e06cd3bbc4e6f7b079c862fbdb3d875ca046db455308"
+    }
+   ],
+   "title": [
+    {
+     "words": 14,
+     "sha256": "c2db7a000fbacf67721f58cc32f5d161aa0a048784d6e8c68ad47759c89b12f3",
+     "chars": 92,
+     "squashed_sha256": "f3e0e4122ce01a9c913743bddb819652266da5e6c3470e3f5898e00b21125149"
+    }
+   ],
+   "phrases": [
+    {
+     "words": 5,
+     "sha256": "ba983760127eb37ec9872e5be2e240c9ea3d10d64b507b33cf0054f246dac421"
+    },
+    {
+     "words": 6,
+     "sha256": "825917e2a3b3282fc97c18a76811fa0dd2e76957e5b2fdf2c63cd56849741606"
+    },
+    {
+     "words": 6,
+     "sha256": "1a32ddf10835030afd9fa361dd949c1007aba960913ae4482fa667aa3679cd92"
+    },
+    {
+     "words": 9,
+     "sha256": "50914bbe783208b916359cb791f649a262927fab14ef5c455f1614e89c4183e1"
+    }
+   ]
+  },
+  {
+   "id": "blacklist_enso_mjo_model",
+   "arxiv": [
+    "8593ba9fc24e923c992b68c34a73e71655d1c19ac1847e90494a361a8e6bdad1"
+   ],
+   "doi": [],
+   "title": [
+    {
+     "words": 10,
+     "sha256": "932cd5a9dedaeccb10b99dc468c17cf7439a4c869f53a566e9a0f2816f0b46c5",
+     "chars": 49,
+     "squashed_sha256": "26b22303b56a36d877a0a88a92f7dc61ad419375125e2591d655ec53881481a9"
+    }
+   ],
+   "phrases": [
+    {
+     "words": 9,
+     "sha256": "893c7e3ec523b0b5b82ad937d01718da02f38883820e0450bb37f982e7f6d88f"
+    }
+   ]
+  },
+  {
+   "id": "blacklist_ro_review",
+   "arxiv": [],
+   "doi": [
+    {
+     "chars": 20,
+     "sha256": "e2e052f683e237335f00e22b9eb2b555928d6450ae0576e283b6fbf5602d6558"
+    }
+   ],
+   "title": [
+    {
+     "words": 10,
+     "sha256": "c6e29d80167814d8a82d69782f2224605d90db99e7ea1cac3c6f41916b38bc4d",
+     "chars": 70,
+     "squashed_sha256": "82465806ca6876cd702551e2c6579b3ac23ec332865299290d7e167ea77b5dc5"
+    }
+   ],
+   "phrases": [
+    {
+     "words": 9,
+     "sha256": "eed26bd96224996f2a65f298511d52c73450ed5ae220f2e7a3110af2e38d78fc"
+    }
+   ]
+  }
+ ],
+ "scored_target_regexes": [
+  "\\b24\\D{1,8}14\\D{1,8}10\\D{1,8}4\\D{1,8}5\\D{1,8}24\\D{1,8}8\\b"
+ ]
+}

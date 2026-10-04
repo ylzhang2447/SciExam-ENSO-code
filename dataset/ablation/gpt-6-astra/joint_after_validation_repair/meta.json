@@ -1,0 +1,8 @@
+{
+ "arm": "gpt6astra",
+ "display_name": "GPT-6 Astra",
+ "candidate": "joint_after_validation_repair",
+ "role": "vote representative",
+ "family": "nonlinear+additive",
+ "calendar_offset": -1.0
+}

@@ -1,0 +1,8 @@
+{
+ "arm": "opus5",
+ "display_name": "Claude Opus 5",
+ "run_id": "main/opus5",
+ "round": "round_72",
+ "role": "final",
+ "calendar_offset": -1.0
+}

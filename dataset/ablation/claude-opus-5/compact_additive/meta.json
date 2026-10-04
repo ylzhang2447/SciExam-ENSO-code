@@ -1,0 +1,8 @@
+{
+ "arm": "opus5",
+ "display_name": "Claude Opus 5",
+ "candidate": "compact_additive",
+ "role": "vote representative",
+ "family": "nonlinear+additive",
+ "calendar_offset": -1.0
+}

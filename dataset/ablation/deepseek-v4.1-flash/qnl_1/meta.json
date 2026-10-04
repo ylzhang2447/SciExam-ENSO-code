@@ -1,0 +1,8 @@
+{
+ "arm": "dsflash",
+ "display_name": "DeepSeek V4.1 Flash",
+ "candidate": "qnl_1",
+ "role": "vote representative",
+ "family": "linear+multiplicative",
+ "calendar_offset": -1.0
+}

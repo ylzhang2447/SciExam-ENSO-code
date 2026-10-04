@@ -1,0 +1,9 @@
+{
+ "arm": "fable51",
+ "display_name": "Claude Fable 5.1",
+ "run_id": "fable_conditions/web_literature_and_data",
+ "condition": "web_literature_and_data",
+ "round": "round_21",
+ "role": "final",
+ "calendar_offset": -1.0
+}

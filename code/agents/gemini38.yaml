@@ -1,0 +1,93 @@
+# Arm configuration for `sciexam run-agent`: Gemini 3.8 Flash (runs.csv run_id main/gemini38).
+# Every value names its source. runs.csv and evidence/main__gemini38.json are the dataset
+# files. run_meta, the freeze manifest and the harness are the formal run records.
+arm: gemini38
+display_name: Gemini 3.8 Flash             # runs.csv display_name
+run_id: main/gemini38               # runs.csv run_id
+campaign_id: formal6C2-20260911    # runs.csv campaign_id (the batch this run belonged to)
+
+scaffold:
+  name: antigravity                  # runs.csv scaffold
+  version: "1.2.0"                    # runs.csv scaffold_version
+  binary: agy                        # installed at /usr/local/bin/agy (run_meta runtime_provenance.cli_path)
+  binary_sha256: 195bf11b249deebe67028305a9b7b1d19ac38e9ab281b786a163a7d2fc8ff428
+  # run_meta runtime_provenance.cli_sha256 (the user supplies the official download, see .env.example)
+
+route:
+  kind: subscription                 # runs.csv route_observed agy
+  product: Google subscription       # runs.csv route (Antigravity sign-in)
+  model_id: gemini-3.8-flash-medium   # runs.csv model_id, passed as --model
+  provider_order: []                 # runs.csv provider_pin: n/a (first-party subscription, no router)
+  allow_fallbacks: false
+  agent_hosts: [daily-cloudcode-pa.googleapis.com, oauth2.googleapis.com, accounts.google.com, www.googleapis.com, lh3.googleusercontent.com]
+  # the five hosts of the formal allowlist proxy of this arm (netpolicy allowlist)
+
+reasoning:
+  effort: medium                     # runs.csv reasoning_effort, the model variant suffix
+  pass_effort_flag: false            # the level is part of the model id
+
+context:
+  working_context_tokens: 200000   # freeze manifest arms.gemini-3.8-flash-medium.context_policy
+  mechanism: none (the CLI has no context or compaction control)
+  enforced: false                    # freeze manifest context_policy.enforced_at_runtime
+  runaway_cap_tokens: 600000
+  # AGY_MAX_CONTEXT_TOKENS of the arm launch environment: a kill switch at about 2.2x
+  # the largest context seen before the run, not the working budget
+  observed_max_context_tokens: "291594"     # runs.csv max_context_tokens
+  observed_compactions: "UNKNOWN: the CLI logs no compaction event"   # runs.csv compactions
+
+antigravity:
+  block_limit: 3                     # adapter BLOCK_LIMIT (same rule as the Stop hook)
+  print_timeout_margin_s: 300        # adapter PRINT_TIMEOUT_MARGIN_S
+  result_wait_s: 900                 # adapter RESULT_WAIT_S
+  retrieval_guard: true              # PreToolUse deny of search and browser tools
+
+provider_signals:
+  classify_failed_turns: true        # the adapter classifies every non-success result
+
+resource_gate: true
+# PDF reads by the file tool fail softly and locally. Installed in every container from
+# the batch that started 2026-09-11 on, so present for this run (launcher version recorded in
+# run_meta provenance.launcher).
+
+network:
+  formal_condition: "none (allowlist proxy: model and sign-in hosts only)"
+  # runs.csv network_condition. The rerun uses one policy for every arm instead: the agent
+  # container has no route out, and an allowlist proxy passes the package index and the
+  # hosts of this arm's route only.
+  agent_allow_hosts: [pypi.org, files.pythonhosted.org]
+
+# Six hours of eligible time: wall time minus provider pauses credited under the rules
+# below. Source: runs.csv eligible_time_s and eligible_s (every ranked run 21600.1 to
+# 21613.6), run_meta budget_hours 6.0.
+budget:
+  eligible_seconds: 21600
+
+# Lifecycle constants of the harness. Identical in all seven harness versions the ranked runs
+# executed (their sha256 are listed in sciexam/agent/provenance.py). Sources: run_meta
+# harness.{snapshot_every_s, p1_turn_cap_s, stall_escalate_s, hard_fail_limit,
+# min_runtime_for_resume, termination_policy} and the harness constants named per line.
+lifecycle:
+  termination_policy: fixed_duration        # run_meta harness.termination_policy
+  phase1_turn_cap_s: 1800                   # run_meta harness.p1_turn_cap_s (P1_TURN_CAP_S)
+  phase1_max_attempts: 4                    # harness MAX_P1_ATTEMPTS
+  phase2a_cap_s: 5400                       # harness P2A_CAP_S (cap of the checks phase)
+  diagnostics_check_timeout_s: 420          # harness check_diagnostics_run timeout
+  diagnostics_repair_rounds: 2              # harness Phase 2A repair loop
+  snapshot_every_s: 300                     # run_meta harness.snapshot_every_s (SNAPSHOT_EVERY_S)
+  stall_escalate_s: 1200                    # run_meta harness.stall_escalate_s (STALL_ESCALATE_S)
+  hard_fail_limit: 3                        # run_meta harness.hard_fail_limit (HARD_FAIL_LIMIT)
+  min_runtime_for_resume_s: 5               # run_meta harness.min_runtime_for_resume
+  productive_fatal_limit: 8                 # harness PRODUCTIVE_FATAL_LIMIT
+  quota_wait_max_events: 12                 # harness QUOTA_WAIT_MAX_EVENTS
+  quota_wait_min_s: 5                       # harness QUOTA_WAIT_MIN_S
+  quota_wait_max_s: 21600                   # harness QUOTA_WAIT_MAX_S
+  quota_wait_recovery_margin_s: 15          # harness QUOTA_WAIT_RECOVERY_MARGIN_S (not credited)
+  pause_on_quota: true                      # harness PAUSE_ON_QUOTA
+  pause_on_provider_service: true           # harness PAUSE_ON_PROVIDER_SERVICE
+  provider_service_pause_granularity_s: 30  # harness PROVIDER_SERVICE_PAUSE_GRANULARITY_S
+  pause_max_per_provider_event_s: 600       # harness PAUSE_MAX_PER_PROVIDER_EVENT_S
+  pause_total_credit_cap_multiple: 1.0      # harness PAUSE_TOTAL_CREDIT_CAP_MULTIPLE
+  max_wall_multiple: 3.0                    # harness MAX_WALL_MULTIPLE (wall ceiling 64800 s)
+  stop_hook_block_limit: 3                  # harness _STOP_HOOK LIMIT
+  agent_uid: "1000:1000"                    # harness CCB_AGENT_UID default

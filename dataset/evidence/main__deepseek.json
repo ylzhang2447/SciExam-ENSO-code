@@ -1,0 +1,290 @@
+{
+ "run_id": "main/deepseek",
+ "arm": "deepseek",
+ "campaign_id": "formal6B-20260910",
+ "archive": "results copy only (trajectory.jsonl, run_meta.json, a 119-byte agent_output.txt, submission). The Batch B workspace, which held the Claude Code transcripts, was not preserved",
+ "pointer_roots": {
+  "run": "the run's archive (see archive)",
+  "harness": "the harness state directory of the run host"
+ },
+ "values": {
+  "scaffold_version": {
+   "value": "Claude Code 2.1.223",
+   "evidence": [
+    {
+     "root": "harness",
+     "path": "otel/deepseek/otel_raw.jsonl",
+     "field": "resource service.version of claude_code.api_request records in the run window"
+    }
+   ],
+   "method": "the transcript was not preserved. The service.version resource attribute of the CLI's own telemetry export for the 589 API requests in the run window"
+  },
+  "route": {
+   "value": "gateway",
+   "evidence": [
+    {
+     "root": "harness",
+     "path": "otel/costlog/gateway_cost.jsonl.20260910-210021.reconciled",
+     "field": "rows for this model in the run window: 589"
+    }
+   ],
+   "method": "589 gateway ledger rows (one per model call) for this model inside the run window, each resolved to an OpenRouter generation record"
+  },
+  "provider_pin": {
+   "value": "GMICloud (589 of 589 generations)",
+   "evidence": [
+    {
+     "root": "harness",
+     "path": "report/reconcile/formal6B-20260910.jsonl",
+     "field": "provider of each generation id of this run"
+    },
+    {
+     "root": "harness",
+     "path": "otel/costlog/gateway_cost.jsonl.20260910-210021.reconciled",
+     "field": "or_provider"
+    }
+   ],
+   "method": "provider field of the OpenRouter generation record fetched for every gateway call of the run (reconciliation)",
+   "configuration_claim": {
+    "provider_order": [
+     "GMICloud"
+    ],
+    "allow_fallbacks": false
+   }
+  },
+  "reasoning_effort": {
+   "value": "high",
+   "evidence": [
+    {
+     "root": "harness",
+     "path": "otel/deepseek/otel_raw.jsonl",
+     "field": "effort attribute of claude_code.api_request records in the run window"
+    }
+   ],
+   "method": "the transcript was not preserved. Effort attribute of the 589 API request events in the CLI telemetry",
+   "configuration_claim": "run_meta runtime_provenance.effort = medium",
+   "note": "the harness passes --effort only to the claudesub scaffold"
+  },
+  "campaign_id": {
+   "value": "formal6B-20260910",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 2,
+     "field": "event=batch_gate.go_line (GO 2026-09-10T13:56:51Z)"
+    },
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "experiment"
+    }
+   ],
+   "method": "the batch gate record at the top of the trajectory (admission and GO time) and the experiment name the harness wrote at admission"
+  },
+  "freeze_id": {
+   "value": "2a6283754afad0de",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "freeze_guard.manifest_sha256, freeze_guard.mode, freeze_guard.enforced, freeze_guard.verdict"
+    }
+   ],
+   "method": "sha256 of the freeze manifest the freeze guard checked at admission (first 16 hex digits). Guard state: formal, enforced, verdict PASS",
+   "guard": "formal, enforced",
+   "note": "Batch B's host registry entry was not preserved, so the digest rests on run_meta alone"
+  },
+  "eligible_s": {
+   "value": 21600.2,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 40,
+     "field": "event=quota_summary.eligible_elapsed_s"
+    }
+   ],
+   "method": "the harness eligible clock at the end of the run: wall time minus credited provider pauses"
+  },
+  "wall_s": {
+   "value": 21600.2,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 40,
+     "field": "event=quota_summary.wall_elapsed_s"
+    }
+   ],
+   "method": "wall time from the start event to the end of the run"
+  },
+  "credited_pauses": {
+   "value": 0,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 40,
+     "field": "event=quota_summary.quota_pause_events"
+    }
+   ],
+   "method": "count of eligible_pause events with credited seconds > 0 (0 s credited in total)",
+   "detail": []
+  },
+  "completion": {
+   "value": "complete",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 41,
+     "field": "event=end.status (complete)"
+    },
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 3,
+     "field": "event=start.budget_s (21600.0)"
+    }
+   ],
+   "method": "end status complete and eligible time at or above the eligible budget"
+  },
+  "max_context_tokens": {
+   "value": 170359,
+   "evidence": [
+    {
+     "root": "harness",
+     "path": "otel/costlog/gateway_cost.jsonl.20260910-210021.reconciled",
+     "line": 308
+    }
+   ],
+   "method": "largest prompt_tokens (uncached plus cached input, as billed) over the 589 gateway calls of the run. 0 calls exceeded 200,000",
+   "configuration_claim": "run_meta harness.context_tokens = 200000 (configured working-context budget)"
+  },
+  "compactions": {
+   "value": 3,
+   "evidence": [
+    {
+     "root": "harness",
+     "path": "otel/deepseek/otel_raw.jsonl",
+     "line": 210,
+     "field": "claude_code.compaction (pre_tokens 166840)"
+    },
+    {
+     "root": "harness",
+     "path": "otel/deepseek/otel_raw.jsonl",
+     "line": 427,
+     "field": "claude_code.compaction (pre_tokens 168850)"
+    },
+    {
+     "root": "harness",
+     "path": "otel/deepseek/otel_raw.jsonl",
+     "line": 651,
+     "field": "claude_code.compaction (pre_tokens 167969)"
+    }
+   ],
+   "method": "the transcript was not preserved. Claude_code.compaction events in the CLI telemetry within the run window"
+  },
+  "jin_pdf_read": {
+   "value": "yes",
+   "evidence": [
+    {
+     "root": "harness",
+     "path": "otel/deepseek/otel_raw.jsonl",
+     "line": 84,
+     "note": "PyPDF2 import failed (not installed)"
+    },
+    {
+     "root": "harness",
+     "path": "otel/deepseek/otel_raw.jsonl",
+     "line": 85,
+     "note": "pip install PyPDF2 --break-system-packages, success"
+    },
+    {
+     "root": "harness",
+     "path": "otel/deepseek/otel_raw.jsonl",
+     "line": 86,
+     "note": "'Extract text from Jin 1997 PDF' with PyPDF2, success"
+    },
+    {
+     "root": "harness",
+     "path": "otel/deepseek/otel_raw.jsonl",
+     "line": 88,
+     "note": "grep of the saved extraction for equations, 20,249 bytes returned"
+    },
+    {
+     "root": "harness",
+     "path": "otel/deepseek/otel_raw.jsonl",
+     "line": 91,
+     "note": "'Read pages 5-10 of Jin 1997', 16,877 bytes returned"
+    }
+   ],
+   "method": "the transcript was not preserved, so the rule is applied to the CLI telemetry: tool_result events carry the full command, a success flag and the returned size, not the text. A PyPDF2 import that failed, then succeeded after pip, then an extraction command and three reads of its saved output returning 12 to 20 kB, are counted as reading"
+  },
+  "jin_pdf_method": {
+   "value": "shell: PyPDF2 installed with pip, all pages extracted, then the saved extraction read in slices (from the CLI telemetry, the transcript was not preserved)"
+  },
+  "network_condition": {
+   "value": "open egress",
+   "evidence": [
+    {
+     "root": "harness",
+     "path": "otel/deepseek/otel_raw.jsonl",
+     "line": 85,
+     "note": "pip install PyPDF2 succeeded"
+    },
+    {
+     "root": "harness",
+     "path": "otel/deepseek/otel_raw.jsonl",
+     "line": 86,
+     "note": "the freshly installed PyPDF2 imported"
+    }
+   ],
+   "method": "a package absent at line 84 was installed from the index and imported"
+  },
+  "cost_usd": {
+   "value": 7.672863,
+   "evidence": [
+    {
+     "root": "harness",
+     "path": "report/reconcile/formal6B-20260910.jsonl",
+     "field": "total_cost of the 589 generation ids of this run"
+    },
+    {
+     "root": "harness",
+     "path": "report/cost_guard_state.json",
+     "field": "batches.formal6B-20260910.completion.spend_usd"
+    }
+   ],
+   "method": "sum of OpenRouter per-generation total_cost over the 589 calls of this run, the convention of every gateway arm except DeepSeek V4.1 Flash. The account ground truth (key usage minus the batch baseline, closed when every arm's billing window closed) is $12.05 for the batch, in which this was the only gateway arm. The released records do not explain the difference",
+   "account_delta_batch_usd": 12.053215
+  },
+  "cost_basis": {
+   "value": "per-generation reconciled (account delta $12.05 over its batch, in which it was the only gateway arm)"
+  },
+  "checkpoints": {
+   "value": 29,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "field": "event=snapshot (29 records)"
+    },
+    {
+     "root": "harness",
+     "path": "snapshots/formal6B-20260910/formal6B-20260910__deepseek/",
+     "field": "29 round_NN folders"
+    }
+   ],
+   "method": "eligible seconds of each snapshot = (snapshot time minus start time) minus credited pause seconds settled before it, with the clock frozen during a pause (the harness rule). Snapshot event round r is folder round_{r+1}. Folder modification times match the event times within 0.1 s. The computed values agree with the harness's own elapsed_min stamp to within 2.4 s (its 0.1 min rounding)",
+   "snapshot_folders": 29
+  }
+ },
+ "unknown": [],
+ "configuration_vs_evidence": [
+  "run_meta records reasoning effort medium, but the CLI telemetry shows effort high on all 589 API requests.",
+  "a project note written on 2026-09-13 lists four PDF readers (GLM-5.2, GPT-5.6-Sol, MiniMax-M3, GPT-6 Astra). This run also extracted the PDF text",
+  "account delta $12.05 is 1.57x the sum of per-generation costs ($7.67) for this DeepSeek arm on GMICloud. Other providers show 1.00 to 1.01x"
+ ]
+}

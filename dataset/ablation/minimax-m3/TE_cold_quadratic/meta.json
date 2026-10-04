@@ -1,0 +1,8 @@
+{
+ "arm": "minimax",
+ "display_name": "MiniMax-M3",
+ "candidate": "TE_cold_quadratic",
+ "role": "automatic endpoint",
+ "family": "nonlinear+multiplicative",
+ "calendar_offset": 0.0
+}

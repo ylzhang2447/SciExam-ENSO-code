@@ -1,0 +1,92 @@
+# Arm configuration for `sciexam run-agent`: GPT-6 Astra (runs.csv run_id main/gpt6astra).
+# Every value names its source. runs.csv and evidence/main__gpt6astra.json are the dataset
+# files. run_meta, the freeze manifest and the harness are the formal run records.
+arm: gpt6astra
+display_name: GPT-6 Astra             # runs.csv display_name
+run_id: main/gpt6astra               # runs.csv run_id
+campaign_id: formal6L-20260913    # runs.csv campaign_id (the batch this run belonged to)
+
+scaffold:
+  name: codex                        # runs.csv scaffold
+  version: "0.154.0"                  # runs.csv scaffold_version
+  npm_package: "@openai/codex"
+  binary: bin/codex.js               # the file the harness hashed (run_meta runtime_provenance.cli_path)
+  binary_sha256: 61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70
+  # run_meta runtime_provenance.cli_sha256
+
+route:
+  kind: subscription                 # runs.csv route_observed codexsub
+  product: OpenAI subscription       # runs.csv route (ChatGPT sign-in of the Codex CLI)
+  model_id: gpt-6-astra             # runs.csv model_id, passed as -m and set in config.toml
+  provider_order: []                 # runs.csv provider_pin: n/a (first-party subscription, no router)
+  allow_fallbacks: false
+  agent_hosts: [chatgpt.com, auth.openai.com, ab.chatgpt.com]
+  # formal arm record runtime_identity.hosts (batchD/arm_gpt6astra.json)
+
+reasoning:
+  effort: medium                     # runs.csv reasoning_effort, config.toml model_reasoning_effort
+  pass_effort_flag: false            # set in config.toml, no command line flag
+
+context:
+  working_context_tokens: 200000   # freeze manifest arms.gpt-6-astra.context_policy
+  mechanism: Codex auto-compact limit (config.toml model_auto_compact_token_limit)
+  enforced: true                     # a compaction threshold, not a hard ceiling
+  codex_auto_compact_token_limit: 200000
+  observed_max_context_tokens: "199050"     # runs.csv max_context_tokens
+  observed_compactions: "5"                # runs.csv compactions
+
+codex:
+  web_search: disabled               # formal arm record preserved_restrictions.web_search
+  formal_config_sha256: 590b1800b0a049ccad55ad4411884c8984db7cca7b7de6ec6f0276f9a3239bf0
+  # freeze manifest arms.gpt-6-astra.config_sha256. The released template renders the known
+  # keys only, so a rendered config is not expected to hash to this value.
+
+provider_signals:
+  classify_failed_turns: true        # harness codex_sub_agent scans failed turns
+
+resource_gate: true
+# PDF reads by the file tool fail softly and locally. Installed in every container from
+# the batch that started 2026-09-11 on, so present for this run (launcher version recorded in
+# run_meta provenance.launcher).
+
+network:
+  formal_condition: "open egress"
+  # runs.csv network_condition. The rerun uses one policy for every arm instead: the agent
+  # container has no route out, and an allowlist proxy passes the package index and the
+  # hosts of this arm's route only.
+  agent_allow_hosts: [pypi.org, files.pythonhosted.org]
+
+# Six hours of eligible time: wall time minus provider pauses credited under the rules
+# below. Source: runs.csv eligible_time_s and eligible_s (every ranked run 21600.1 to
+# 21613.6), run_meta budget_hours 6.0.
+budget:
+  eligible_seconds: 21600
+
+# Lifecycle constants of the harness. Identical in all seven harness versions the ranked runs
+# executed (their sha256 are listed in sciexam/agent/provenance.py). Sources: run_meta
+# harness.{snapshot_every_s, p1_turn_cap_s, stall_escalate_s, hard_fail_limit,
+# min_runtime_for_resume, termination_policy} and the harness constants named per line.
+lifecycle:
+  termination_policy: fixed_duration        # run_meta harness.termination_policy
+  phase1_turn_cap_s: 1800                   # run_meta harness.p1_turn_cap_s (P1_TURN_CAP_S)
+  phase1_max_attempts: 4                    # harness MAX_P1_ATTEMPTS
+  phase2a_cap_s: 5400                       # harness P2A_CAP_S (cap of the checks phase)
+  diagnostics_check_timeout_s: 420          # harness check_diagnostics_run timeout
+  diagnostics_repair_rounds: 2              # harness Phase 2A repair loop
+  snapshot_every_s: 300                     # run_meta harness.snapshot_every_s (SNAPSHOT_EVERY_S)
+  stall_escalate_s: 1200                    # run_meta harness.stall_escalate_s (STALL_ESCALATE_S)
+  hard_fail_limit: 3                        # run_meta harness.hard_fail_limit (HARD_FAIL_LIMIT)
+  min_runtime_for_resume_s: 5               # run_meta harness.min_runtime_for_resume
+  productive_fatal_limit: 8                 # harness PRODUCTIVE_FATAL_LIMIT
+  quota_wait_max_events: 12                 # harness QUOTA_WAIT_MAX_EVENTS
+  quota_wait_min_s: 5                       # harness QUOTA_WAIT_MIN_S
+  quota_wait_max_s: 21600                   # harness QUOTA_WAIT_MAX_S
+  quota_wait_recovery_margin_s: 15          # harness QUOTA_WAIT_RECOVERY_MARGIN_S (not credited)
+  pause_on_quota: true                      # harness PAUSE_ON_QUOTA
+  pause_on_provider_service: true           # harness PAUSE_ON_PROVIDER_SERVICE
+  provider_service_pause_granularity_s: 30  # harness PROVIDER_SERVICE_PAUSE_GRANULARITY_S
+  pause_max_per_provider_event_s: 600       # harness PAUSE_MAX_PER_PROVIDER_EVENT_S
+  pause_total_credit_cap_multiple: 1.0      # harness PAUSE_TOTAL_CREDIT_CAP_MULTIPLE
+  max_wall_multiple: 3.0                    # harness MAX_WALL_MULTIPLE (wall ceiling 64800 s)
+  stop_hook_block_limit: 3                  # harness _STOP_HOOK LIMIT
+  agent_uid: "1000:1000"                    # harness CCB_AGENT_UID default

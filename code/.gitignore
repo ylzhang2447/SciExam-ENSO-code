@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+sciexam_results/
+.pytest_cache/
+sciexam_runs/
+sciexam_figures/
+.env

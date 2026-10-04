@@ -1,0 +1,22 @@
+# Out of scope for this task (do not read, cite, or copy from)
+#
+# This task asks you to BUILD and calibrate a stochastic conceptual model of ENSO
+# diversity yourself. A small number of publications already contain a complete,
+# calibrated model of exactly this kind (the full T_C, T_E, h_W, u, tau stochastic
+# system with its parameter table and validation metrics). Using them would replace
+# the task with a lookup, so they are out of scope. The provided reference (Jin 1997)
+# gives the foundational mechanism, which is enough; the stochastic, nonlinear, seasonal,
+# and diversity parts are yours to build.
+#
+# Do not access or use any of the following, in any version (preprint, journal,
+# code repository, mirror, or summary):
+
+arXiv:2402.04585
+"A stochastic conceptual model for ENSO diversity" and its published (JAMES) version
+Any Chen / Fang / Geng et al. paper or repository giving a complete calibrated
+  T_C / T_E / h_W / u / tau stochastic ENSO-diversity model with its parameters
+github.com/ (any) ENSO-MJO-Stochastic-Conceptual-Model repositories
+Vialard et al. (2025), "The ENSO Recharge Oscillator Conceptual Model: Achievements
+  and Future Prospects", Reviews of Geophysics (10.1029/2024RG000843) -- it lists the
+  full nonlinear stochastic RO equations and a parameter table (Eqs. 4-6, Table 2),
+  which would hand you the model; out of scope.

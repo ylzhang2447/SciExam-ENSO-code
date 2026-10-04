@@ -1,0 +1,8 @@
+{
+ "arm": "fable51",
+ "display_name": "Claude Fable 5.1",
+ "candidate": "S3_affine_periodic_drift",
+ "role": "vote representative",
+ "family": "linear+multiplicative",
+ "calendar_offset": 0.0
+}

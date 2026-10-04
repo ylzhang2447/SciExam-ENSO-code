@@ -1,0 +1,16 @@
+{
+  "_comment": "Characteristic scales for non-dimensionalizing the observed indices when building the model. Divide each dimensional index by its scale to get the O(1) non-dimensional variable. These are unit conventions only; they do not prescribe any model structure or parameters.",
+  "T_scale_degC": 7.5,
+  "h_scale_m": 150.0,
+  "u_scale_m_per_s": 1.5,
+  "tau_scale_m_per_s": 5.0,
+  "t_scale_months": 2.0,
+  "usage": {
+    "TC": "TC_nondim = TC[degC] / T_scale_degC",
+    "TE": "TE_nondim = TE[degC] / T_scale_degC",
+    "hW": "hW_nondim = hW[m] / h_scale_m",
+    "u":  "u_nondim  = u[m/s] / u_scale_m_per_s",
+    "tau":"tau_nondim = tau[m/s] / tau_scale_m_per_s",
+    "time": "one non-dimensional time unit = t_scale_months months (so a 6-month lead = 3 non-dim time units)"
+  }
+}

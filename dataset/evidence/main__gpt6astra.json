@@ -1,0 +1,317 @@
+{
+ "run_id": "main/gpt6astra",
+ "arm": "gpt6astra",
+ "campaign_id": "formal6L-20260913",
+ "archive": "run workspace, archived after the run (trajectory.jsonl, run_meta.json, agent transcripts)",
+ "pointer_roots": {
+  "run": "the run's archive (see archive)",
+  "harness": "the harness state directory of the run host"
+ },
+ "values": {
+  "scaffold_version": {
+   "value": "Codex CLI 0.154.0",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-18-14-01a09cd9-7dd4-7b31-bbc7-7075082dea51.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.cli_version"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-20-46-01a09cdb-ce6f-76c1-80f2-ffe6d1559cfc.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.cli_version"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-35-00-01a09ce8-d62c-71b1-994a-a6f2c1294c5e.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.cli_version"
+    }
+   ],
+   "method": "cli_version in the session_meta record of each Codex session rollout"
+  },
+  "route": {
+   "value": "codexsub",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-18-14-01a09cd9-7dd4-7b31-bbc7-7075082dea51.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-20-46-01a09cdb-ce6f-76c1-80f2-ffe6d1559cfc.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-35-00-01a09ce8-d62c-71b1-994a-a6f2c1294c5e.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    }
+   ],
+   "method": "Codex sessions report model_provider openai (ChatGPT subscription login, not the gateway), and the gateway ledger holds no row for this model in the run window"
+  },
+  "provider_pin": {
+   "value": "n/a (first-party subscription, no router)",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-18-14-01a09cd9-7dd4-7b31-bbc7-7075082dea51.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-20-46-01a09cdb-ce6f-76c1-80f2-ffe6d1559cfc.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-35-00-01a09ce8-d62c-71b1-994a-a6f2c1294c5e.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    }
+   ],
+   "method": "no router sits between this scaffold and its provider"
+  },
+  "reasoning_effort": {
+   "value": "medium",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-18-14-01a09cd9-7dd4-7b31-bbc7-7075082dea51.jsonl",
+     "field": "turn_context.payload.effort"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-20-46-01a09cdb-ce6f-76c1-80f2-ffe6d1559cfc.jsonl",
+     "field": "turn_context.payload.effort"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-35-00-01a09ce8-d62c-71b1-994a-a6f2c1294c5e.jsonl",
+     "field": "turn_context.payload.effort"
+    }
+   ],
+   "method": "effort of every turn_context record in the Codex rollouts (10 turns)"
+  },
+  "campaign_id": {
+   "value": "formal6L-20260913",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 1,
+     "field": "event=batch_gate.go_line (GO 2026-09-13T22:18:12Z)"
+    },
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "experiment"
+    }
+   ],
+   "method": "the batch gate record at the top of the trajectory (admission and GO time) and the experiment name the harness wrote at admission"
+  },
+  "freeze_id": {
+   "value": "153cfb7f05f687ac",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "run_meta.json",
+     "field": "freeze_guard.manifest_sha256, freeze_guard.mode, freeze_guard.enforced, freeze_guard.verdict"
+    }
+   ],
+   "method": "sha256 of the freeze manifest the freeze guard checked at admission (first 16 hex digits). Guard state: formal, enforced, verdict PASS",
+   "guard": "formal, enforced"
+  },
+  "eligible_s": {
+   "value": 21600.1,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 59,
+     "field": "event=quota_summary.eligible_elapsed_s"
+    }
+   ],
+   "method": "the harness eligible clock at the end of the run: wall time minus credited provider pauses"
+  },
+  "wall_s": {
+   "value": 21600.1,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 59,
+     "field": "event=quota_summary.wall_elapsed_s"
+    }
+   ],
+   "method": "wall time from the start event to the end of the run"
+  },
+  "credited_pauses": {
+   "value": 0,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 59,
+     "field": "event=quota_summary.quota_pause_events"
+    }
+   ],
+   "method": "count of eligible_pause events with credited seconds > 0 (0 s credited in total)",
+   "detail": []
+  },
+  "completion": {
+   "value": "complete",
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 60,
+     "field": "event=end.status (complete)"
+    },
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "line": 2,
+     "field": "event=start.budget_s (21600.0)"
+    }
+   ],
+   "method": "end status complete and eligible time at or above the eligible budget"
+  },
+  "max_context_tokens": {
+   "value": 199050,
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-35-00-01a09ce8-d62c-71b1-994a-a6f2c1294c5e.jsonl",
+     "line": 3797
+    }
+   ],
+   "method": "last_token_usage.input_tokens of each token_count event in the Codex session rollouts (includes cached input). 0 of 432 turns exceeded 200,000. Model_context_window 258400",
+   "configuration_claim": "run_meta harness.context_tokens = 200000 (configured working-context budget)"
+  },
+  "compactions": {
+   "value": 5,
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-35-00-01a09ce8-d62c-71b1-994a-a6f2c1294c5e.jsonl",
+     "line": 665
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-35-00-01a09ce8-d62c-71b1-994a-a6f2c1294c5e.jsonl",
+     "line": 1381
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-35-00-01a09ce8-d62c-71b1-994a-a6f2c1294c5e.jsonl",
+     "line": 2107
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-35-00-01a09ce8-d62c-71b1-994a-a6f2c1294c5e.jsonl",
+     "line": 2918
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-35-00-01a09ce8-d62c-71b1-994a-a6f2c1294c5e.jsonl",
+     "line": 3803
+    }
+   ],
+   "method": "records of type compacted in the Codex rollouts"
+  },
+  "jin_pdf_read": {
+   "value": "yes",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-20-46-01a09cdb-ce6f-76c1-80f2-ffe6d1559cfc.jsonl",
+     "line": 31,
+     "note": "pip install --quiet --target .local_tools pypdf, exit code 0"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-20-46-01a09cdb-ce6f-76c1-80f2-ffe6d1559cfc.jsonl",
+     "line": 36,
+     "note": "pypdf extraction, 40,501 characters"
+    }
+   ],
+   "method": "A call counts as reading the PDF when a tool call that touches the PDF (a Read of the .pdf, or a shell command naming the file or a PDF library) returns at least 1,500 characters containing at least three of: thermocline, recharge, discharge, zonal, equatorial, Kelvin, Rossby, oscillator, wind stress, Sverdrup. Each hit was then checked by hand."
+  },
+  "jin_pdf_method": {
+   "value": "shell: pypdf installed with pip --target .local_tools, then PdfReader extraction (40,501 characters returned)"
+  },
+  "network_condition": {
+   "value": "open egress",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-20-46-01a09cdb-ce6f-76c1-80f2-ffe6d1559cfc.jsonl",
+     "line": 31,
+     "note": "pip install into a fresh target directory exited 0"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-20-46-01a09cdb-ce6f-76c1-80f2-ffe6d1559cfc.jsonl",
+     "line": 36,
+     "note": "the installed pypdf imported"
+    }
+   ],
+   "method": "a package absent from the image was installed from the index and imported"
+  },
+  "cost_usd": {
+   "value": "subscription",
+   "evidence": [
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-18-14-01a09cd9-7dd4-7b31-bbc7-7075082dea51.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-20-46-01a09cdb-ce6f-76c1-80f2-ffe6d1559cfc.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    },
+    {
+     "root": "run",
+     "path": ".codex/sessions/2026/09/13/rollout-2026-09-13T22-35-00-01a09ce8-d62c-71b1-994a-a6f2c1294c5e.jsonl",
+     "line": 1,
+     "field": "session_meta.payload.model_provider"
+    }
+   ],
+   "method": "no per-token charge: subscription (OpenAI, Codex CLI subscription login). The gateway account for the batch moved by $0.007417 over the batch window, none of it from this arm"
+  },
+  "cost_basis": {
+   "value": "subscription (OpenAI, Codex CLI subscription login)"
+  },
+  "checkpoints": {
+   "value": 46,
+   "evidence": [
+    {
+     "root": "run",
+     "path": "trajectory.jsonl",
+     "field": "event=snapshot (46 records)"
+    },
+    {
+     "root": "harness",
+     "path": "snapshots/formal6L-20260913/formal6L-20260913__gpt6astra/",
+     "field": "46 round_NN folders"
+    }
+   ],
+   "method": "eligible seconds of each snapshot = (snapshot time minus start time) minus credited pause seconds settled before it, with the clock frozen during a pause (the harness rule). Snapshot event round r is folder round_{r+1}. Folder modification times match the event times within 0.1 s. The computed values agree with the harness's own elapsed_min stamp to within 2.8 s (its 0.1 min rounding)",
+   "snapshot_folders": 46
+  }
+ },
+ "unknown": [],
+ "configuration_vs_evidence": []
+}

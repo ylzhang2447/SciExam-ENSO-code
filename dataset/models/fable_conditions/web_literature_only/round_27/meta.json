@@ -1,0 +1,9 @@
+{
+ "arm": "fable51",
+ "display_name": "Claude Fable 5.1",
+ "run_id": "fable_conditions/web_literature_only",
+ "condition": "web_literature_only",
+ "round": "round_27",
+ "role": "best",
+ "calendar_offset": 0.0
+}

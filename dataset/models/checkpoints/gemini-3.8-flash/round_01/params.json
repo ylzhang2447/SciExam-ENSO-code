@@ -1,0 +1,17 @@
+{
+  "d_TC": 0.15,
+  "d_TE": 0.15,
+  "d_hW": 0.10,
+  "d_u": 0.50,
+  "d_tau": 0.80,
+  "gamma_TC": 0.02,
+  "gamma_TE": 0.04,
+  "b_tau": 1.5,
+  "r_hW": 2.0,
+  "c_u": 0.05,
+  "sigma_TC": 0.10,
+  "sigma_TE": 0.15,
+  "sigma_hW": 1.0,
+  "sigma_u": 0.05,
+  "sigma_tau": 1.2
+}

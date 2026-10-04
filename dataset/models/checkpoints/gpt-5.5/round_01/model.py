@@ -1,0 +1,73 @@
+"""Stochastic low-order ENSO diversity model.
+
+The public interface is intentionally only ENSOModel.step.  State passed into and
+out of step is dimensional; the tendency is evaluated internally in the
+non-dimensional variables used for calibration.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+
+
+class ENSOModel:
+    def __init__(self, params: dict):
+        self.params = dict(params)
+        self.scales = np.asarray(
+            [
+                self.params.get("T_scale_degC", 7.5),
+                self.params.get("T_scale_degC", 7.5),
+                self.params.get("h_scale_m", 150.0),
+                self.params.get("u_scale_m_per_s", 1.5),
+                self.params.get("tau_scale_m_per_s", 5.0),
+            ],
+            dtype=float,
+        )
+        self.c = np.asarray(self.params["drift_intercept"], dtype=float).reshape(5, 1)
+        self.a = np.asarray(self.params["drift_matrix"], dtype=float)
+        self.chol = np.asarray(self.params["noise_cholesky"], dtype=float)
+        self.seasonal_noise = np.asarray(self.params["seasonal_noise_factor"], dtype=float)
+        self.noise_scale = float(self.params.get("noise_scale", 1.0))
+        self.noise_variable_scale = np.asarray(self.params.get("noise_variable_scale", [1.0] * 5), dtype=float).reshape(5, 1)
+        self.seasonal_noise_by_var = np.asarray(self.params.get("seasonal_noise_by_var", [[1.0] * 12] * 5), dtype=float)
+        self.sat_strength = np.asarray(self.params.get("saturation_strength", [0.0] * 5), dtype=float).reshape(5, 1)
+        self.sat_threshold = np.asarray(self.params.get("saturation_threshold", [1.0] * 5), dtype=float).reshape(5, 1)
+        self.clip = np.asarray(self.params.get("state_clip_nondim", [np.inf] * 5), dtype=float).reshape(5, 1)
+        self.warm_te_asymmetry = float(self.params.get("warm_te_asymmetry", 0.0))
+        self.cold_te_rebound = float(self.params.get("cold_te_rebound", 0.0))
+        self.cold_tc_asymmetry = float(self.params.get("cold_tc_asymmetry", 0.0))
+        self.negative_hw_asymmetry = float(self.params.get("negative_hw_asymmetry", 0.0))
+        self.recharge_boost = float(self.params.get("coupled_recharge_boost", 0.0))
+
+    def step(self, state, dt, t, rng):
+        state = np.asarray(state, dtype=float)
+        if state.ndim != 2 or state.shape[0] != 5:
+            raise ValueError("state must have shape (5, M)")
+
+        x = state / self.scales.reshape(5, 1)
+        drift = self.c + self.a @ x
+
+        # Weak nonlinear damping keeps long integrations finite without changing
+        # the fitted linear recharge oscillator near the observed state cloud.
+        q = x / np.maximum(self.sat_threshold, 1.0e-9)
+        drift -= self.sat_strength * x * q * q
+
+        te_pos = np.maximum(x[1], 0.0)
+        te_neg = np.minimum(x[1], 0.0)
+        tc_neg = np.minimum(x[0], 0.0)
+        hw_neg = np.minimum(x[2], 0.0)
+        drift[1] += self.warm_te_asymmetry * te_pos * te_pos
+        drift[1] += self.cold_te_rebound * te_neg * te_neg
+        drift[0] += self.cold_tc_asymmetry * tc_neg * tc_neg
+        drift[2] -= self.negative_hw_asymmetry * hw_neg * hw_neg
+        drift[2] -= self.recharge_boost * x[1] * te_pos
+
+        month = int(np.floor(float(t))) % 12
+        z = rng.normal(size=x.shape)
+        noise = self.chol @ z
+        noise *= self.noise_scale * self.seasonal_noise[month]
+        noise *= self.noise_variable_scale * self.seasonal_noise_by_var[:, month].reshape(5, 1)
+
+        x_next = x + float(dt) * drift + np.sqrt(max(float(dt), 0.0)) * noise
+        x_next = np.clip(x_next, -self.clip, self.clip)
+        return x_next * self.scales.reshape(5, 1)

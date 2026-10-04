@@ -1,0 +1,8 @@
+{
+ "arm": "kimi",
+ "display_name": "Kimi K3",
+ "candidate": "joint_three_diagonal_noise",
+ "role": "vote representative",
+ "family": "linear+multiplicative",
+ "calendar_offset": 0.0
+}

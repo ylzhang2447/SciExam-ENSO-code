@@ -1,0 +1,14 @@
+arm,display_name,candidate,role,retained_family,original_composite,simplified_composite
+fable51,Claude Fable 5.1,S3_affine_periodic_drift,vote representative,linear+multiplicative,0.5153933141132855,0.5417765806240493
+kimi,Kimi K3,joint_three_diagonal_noise,vote representative,linear+multiplicative,0.47912119806373943,0.46525585839790407
+opus5,Claude Opus 5,compact_additive,vote representative,nonlinear+additive,0.4399929655998988,0.4731847658000916
+gpt56,GPT-5.6-Sol,diagonal_noise,vote representative,nonlinear+additive,0.44334538124002465,0.46424008726678356
+gpt6astra,GPT-6 Astra,joint_after_validation_repair,vote representative,nonlinear+additive,0.44245501936167275,0.4620468489331652
+gpt55,GPT-5.5,additive_noise,vote representative,nonlinear+additive,0.4027432346478955,0.3975750078439162
+gpt55,GPT-5.5,affine_drift,also qualifies,linear+multiplicative,0.4027432346478955,0.39512234537407154
+gemini38,Gemini 3.8 Flash,additive_noise,vote representative,nonlinear+additive,0.36937845200409236,0.3624942590547358
+dsflash,DeepSeek V4.1 Flash,qnl_1,vote representative,linear+multiplicative,0.3506965536693267,0.3909650662239108
+deepseek,DeepSeek V4 Pro,linear_drift,vote representative,linear+multiplicative,0.3449128431321086,0.34016206134057103
+minimax,MiniMax-M3,TE_cold_quadratic,automatic endpoint,nonlinear+multiplicative,0.22155998073094846,0.2201539732322379
+glm52,GLM-5.2,joint_simplified,automatic endpoint,linear+additive,0.18840271247759388,0.2926279213075634
+qwen3max,Qwen3-Max,linear_drift,automatic endpoint,linear+additive,0.053968692660279746,0.05396864941229023

@@ -1,0 +1,8 @@
+{
+ "arm": "dsflash",
+ "display_name": "DeepSeek V4.1 Flash",
+ "candidate": "additive_noise",
+ "role": "competing reduction",
+ "family": "nonlinear+additive",
+ "calendar_offset": -1.0
+}

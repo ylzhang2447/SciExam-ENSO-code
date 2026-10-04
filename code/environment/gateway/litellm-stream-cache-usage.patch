@@ -1,0 +1,110 @@
+Streaming cache-usage accounting patch for LiteLLM 1.83.9 (apply with patch -p1 in
+site-packages). LiteLLM is MIT licensed, Copyright (c) 2023 Berri AI, see NOTICE.
+The adapter reported the cached prompt prefix nowhere on the OpenRouter route and counted
+cache creation twice, so a client could not see the size of its own context. After the
+patch input_tokens + cache_read_input_tokens + cache_creation_input_tokens equals
+prompt_tokens, and contradictory provider counts raise instead of being clamped.
+
+--- a/litellm/llms/anthropic/experimental_pass_through/adapters/streaming_iterator.py
++++ b/litellm/llms/anthropic/experimental_pass_through/adapters/streaming_iterator.py
+@@ -279,39 +279,73 @@
+                         merged_chunk["delta"] = {}
+ 
+                     # Add usage to the held chunk
+-                    uncached_input_tokens = chunk.usage.prompt_tokens or 0
+-                    if (
+-                        hasattr(chunk.usage, "prompt_tokens_details")
+-                        and chunk.usage.prompt_tokens_details
+-                    ):
+-                        cached_tokens = (
+-                            getattr(
+-                                chunk.usage.prompt_tokens_details, "cached_tokens", 0
+-                            )
+-                            or 0
+-                        )
+-                        uncached_input_tokens -= cached_tokens
++                    # --- CACHE USAGE PATCH A: cache components, each derived exactly once ---
++                    # Pinned litellm 1.83.9, anthropic/chat/transformation.py builds
++                    # prompt_tokens as raw_input + creation + read:
++                    #   :1704  prompt_tokens += cache_creation_input_tokens
++                    #   :1710  prompt_tokens += cache_read_input_tokens
++                    # and then exposes each component a SECOND time:
++                    #   :1751  prompt_tokens_details.cached_tokens         = read
++                    #          prompt_tokens_details.cache_creation_tokens = creation
++                    #   :1778  Usage(...) -> private _cache_read_input_tokens
++                    #                    -> private _cache_creation_input_tokens
++                    # Each component is therefore ONE quantity with two representations,
++                    # both already inside prompt_tokens. Summing the representations, or
++                    # emitting one without subtracting it, double counts.
++                    #
++                    # FAIL CLOSED. Zero or absent means "not reported". Two nonzero
++                    # representations of the same component must be exactly equal. A
++                    # disagreement, a negative, or a total exceeding prompt_tokens is an
++                    # upstream contract change, not something to clamp away quietly.
++                    def _cu_one(_name, _a, _b):
++                        _a = _a or 0
++                        _b = _b or 0
++                        if _a < 0 or _b < 0:
++                            raise ValueError(
++                                "cache usage: negative %s cache count (%r, %r)" % (_name, _a, _b))
++                        if _a and _b and _a != _b:
++                            raise ValueError(
++                                "cache usage: contradictory %s cache counts: standard=%d private=%d"
++                                % (_name, _a, _b))
++                        return _a or _b
++
++                    _cu_pt = chunk.usage.prompt_tokens or 0
++                    if _cu_pt < 0:
++                        raise ValueError("cache usage: negative prompt_tokens %r" % _cu_pt)
++                    _cu_d = getattr(chunk.usage, "prompt_tokens_details", None)
++                    cached_tokens = _cu_one(
++                        "read",
++                        getattr(_cu_d, "cached_tokens", 0) if _cu_d else 0,
++                        getattr(chunk.usage, "_cache_read_input_tokens", 0))
++                    _cu_creation = _cu_one(
++                        "creation",
++                        getattr(_cu_d, "cache_creation_tokens", 0) if _cu_d else 0,
++                        getattr(chunk.usage, "_cache_creation_input_tokens", 0))
++                    if cached_tokens + _cu_creation > _cu_pt:
++                        raise ValueError(
++                            "cache usage: cache components exceed prompt_tokens "
++                            "(read=%d creation=%d prompt_tokens=%d)"
++                            % (cached_tokens, _cu_creation, _cu_pt))
++                    uncached_input_tokens = _cu_pt - cached_tokens - _cu_creation
++                    # --- end CACHE USAGE PATCH A ---
+ 
+                     usage_dict: UsageDelta = {
+                         "input_tokens": uncached_input_tokens,
+                         "output_tokens": chunk.usage.completion_tokens or 0,
+                     }
+-                    # Add cache tokens if available (for prompt caching support)
+-                    if (
+-                        hasattr(chunk.usage, "_cache_creation_input_tokens")
+-                        and chunk.usage._cache_creation_input_tokens > 0
+-                    ):
+-                        usage_dict["cache_creation_input_tokens"] = (
+-                            chunk.usage._cache_creation_input_tokens
+-                        )
+-                    if (
+-                        hasattr(chunk.usage, "_cache_read_input_tokens")
+-                        and chunk.usage._cache_read_input_tokens > 0
+-                    ):
+-                        usage_dict["cache_read_input_tokens"] = (
+-                            chunk.usage._cache_read_input_tokens
+-                        )
++                    # --- CACHE USAGE PATCH B: emit each cache component once ---
++                    # Section A subtracted read and creation from uncached, so emitting
++                    # them here restores exactly the provider's total:
++                    #     input_tokens + cache_read + cache_creation == prompt_tokens
++                    # Upstream emitted each from its private attribute WITHOUT subtracting
++                    # it, double counting, and emitted nothing when only the standard
++                    # representation was present, losing it entirely.
++                    if cached_tokens > 0:
++                        usage_dict["cache_read_input_tokens"] = cached_tokens
++                    if _cu_creation > 0:
++                        usage_dict["cache_creation_input_tokens"] = _cu_creation
+                     merged_chunk["usage"] = usage_dict
++                    # --- end CACHE USAGE PATCH B ---
+ 
+                     # Queue the merged chunk and reset
+                     self.chunk_queue.append(merged_chunk)

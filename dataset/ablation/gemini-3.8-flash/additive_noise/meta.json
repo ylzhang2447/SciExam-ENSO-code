@@ -1,0 +1,8 @@
+{
+ "arm": "gemini38",
+ "display_name": "Gemini 3.8 Flash",
+ "candidate": "additive_noise",
+ "role": "vote representative",
+ "family": "nonlinear+additive",
+ "calendar_offset": 0.0
+}
