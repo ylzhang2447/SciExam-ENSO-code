@@ -4,7 +4,7 @@ Code and data of **SciExam for ENSO: Can AI Agents Build Climate Models?**
 
 Yinling Zhang, Langchen Liu, Dongbin Xiu, Xueyan Zou, Xu Kuang, Mengdi Wang, Shilong Liu
 
-[Website](https://ylzhang2447.github.io/enso-agent-benchmark/) · [Detailed results](https://ylzhang2447.github.io/enso-agent-benchmark/results/) · Paper (arXiv link coming soon)
+[Paper](https://arxiv.org/abs/2610.10513) · [Website](https://enso.aisexam.com/) · [Detailed results](https://enso.aisexam.com/results/)
 
 SciExam-ENSO is a benchmark in which LLM agents build low-order stochastic models of
 the El Nino-Southern Oscillation from raw observations within a six-hour budget.
@@ -30,11 +30,15 @@ described in `code/README.md`.
 ## Citation
 
 ```bibtex
-@article{zhang2026sciexam,
-  title  = {SciExam for ENSO: Can AI Agents Build Climate Models?},
-  author = {Zhang, Yinling and Liu, Langchen and Xiu, Dongbin and Zou, Xueyan
-            and Kuang, Xu and Wang, Mengdi and Liu, Shilong},
-  year   = {2026}
+@misc{zhang2026sciexamensoaiagents,
+  title         = {SciExam for ENSO: Can AI Agents Build Climate Models?},
+  author        = {Yinling Zhang and Langchen Liu and Dongbin Xiu and Xueyan Zou
+                   and Xu Kuang and Mengdi Wang and Shilong Liu},
+  year          = {2026},
+  eprint        = {2610.10513},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.AI},
+  url           = {https://arxiv.org/abs/2610.10513}
 }
 ```
 

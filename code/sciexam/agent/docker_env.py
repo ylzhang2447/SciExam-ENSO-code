@@ -24,6 +24,10 @@ import shlex
 import subprocess
 from pathlib import Path
 
+# Every image of a run is built and run for linux/amd64: the agent image installs the Linux x64
+# builds of Node.js and the agent CLIs, pinned by sha256. On an arm64 host Docker emulates it.
+PLATFORM = os.environ.get("SCIEXAM_PLATFORM", "linux/amd64")
+
 PROXY_IMAGE = ("python:3.12-slim@sha256:"
                "2f17fc044b579bab302c2e8054d3a686e2cb9a83de48e70534b94cd8ebbe06a9")
 PROXY_PORT = 3128
@@ -104,20 +108,20 @@ def proxy_env(arm):
 
 
 def build_commands(arm, prefix, repo, env_values):
-    argv = ["docker", "build", "-f", str(repo / "environment/agent/Dockerfile")]
+    argv = ["docker", "build", "--platform", PLATFORM, "-f", str(repo / "environment/agent/Dockerfile")]
     for k, v in agent_build_args(arm, env_values).items():
         argv += ["--build-arg", "%s=%s" % (k, v)]
     out = [("build agent image",
             argv + ["-t", agent_image_tag(arm, prefix), str(repo / "environment/agent")])]
     if arm["route"]["kind"] == "gateway":
         out.append(("build gateway image",
-                    ["docker", "build", "-f", str(repo / "environment/gateway/Dockerfile"),
+                    ["docker", "build", "--platform", PLATFORM, "-f", str(repo / "environment/gateway/Dockerfile"),
                      "--build-arg", "APPLY_CACHE_USAGE_PATCH=%d"
                      % (1 if arm["route"]["gateway_patch"] != "none" else 0),
                      "-t", gateway_image_tag(arm, prefix), str(repo / "environment/gateway")]))
     if is_research(arm):
         out.append(("build research proxy image",
-                    ["docker", "build", "-f", str(repo / "environment/research-proxy/Dockerfile"),
+                    ["docker", "build", "--platform", PLATFORM, "-f", str(repo / "environment/research-proxy/Dockerfile"),
                      "-t", research_image_tag(prefix), str(repo / "environment/research-proxy")]))
     return out
 
@@ -139,7 +143,7 @@ def up_commands(arm, prefix, n, paths, proxy_script):
     else:
         cmds.append((
             "start allowlist proxy",
-            ["docker", "run", "-d", "--name", n.proxy] + lab +
+            ["docker", "run", "-d", "--platform", PLATFORM, "--name", n.proxy] + lab +
             ["--network", n.egress, "--log-driver", "none", "--read-only", "--cap-drop", "ALL",
              "--security-opt", "no-new-privileges", "--user", "65534:65534",
              "--memory", "256m", "--pids-limit", "256",
@@ -153,7 +157,7 @@ def up_commands(arm, prefix, n, paths, proxy_script):
     if arm["route"]["kind"] == "gateway":
         cmds.append((
             "start LiteLLM gateway",
-            ["docker", "run", "-d", "--name", n.gateway] + lab +
+            ["docker", "run", "-d", "--platform", PLATFORM, "--name", n.gateway] + lab +
             ["--network", n.egress, "--log-driver", "none", "--cap-drop", "ALL",
              "--security-opt", "no-new-privileges",
              "-e", "OPENROUTER_API_KEY", "-e", "LITELLM_MASTER_KEY",
@@ -165,7 +169,7 @@ def up_commands(arm, prefix, n, paths, proxy_script):
                      ["docker", "network", "connect", "--alias", GATEWAY_ALIAS, n.internal,
                       n.gateway], ()))
     env = proxy_env(arm)
-    argv = (["docker", "run", "-d", "--name", n.agent] + lab
+    argv = (["docker", "run", "-d", "--platform", PLATFORM, "--name", n.agent] + lab
             + ["--network", n.internal, "--log-driver", "none"])
     for k, v in env.items():
         argv += ["-e", "%s=%s" % (k, v)]
@@ -182,7 +186,7 @@ def research_proxy_argv(prefix, n, paths):
     user, so everything it writes on the host belongs to that user."""
     from .research import PROXY_PORT as RESEARCH_PORT
     uid = "%d:%d" % (os.getuid(), os.getgid()) if hasattr(os, "getuid") else "1000:1000"
-    return (["docker", "run", "-d", "--name", n.proxy, "--label", n.label,
+    return (["docker", "run", "-d", "--platform", PLATFORM, "--name", n.proxy, "--label", n.label,
              "--network", n.egress, "--log-driver", "none", "--read-only",
              "--tmpfs", "/tmp", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
              "--user", uid, "--memory", "1g", "--pids-limit", "512",
