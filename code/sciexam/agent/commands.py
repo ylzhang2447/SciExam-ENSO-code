@@ -1,5 +1,6 @@
 """`sciexam run-agent`: rerun one ranked arm, or a Claude Fable 5.1 condition run, with the
-released harness."""
+released harness. Several arms can run in one call (`--agent a,b --parallel N`), each at a chosen
+reasoning effort (`--effort`). `sciexam list-agents` shows the arms and the levels each accepts."""
 import json
 import os
 import secrets as _secrets
@@ -11,6 +12,7 @@ from pathlib import Path
 from . import conditions as K
 from . import config as C
 from . import docker_env as D
+from . import effort as E
 from . import prompts as P
 from . import task as T
 
@@ -281,6 +283,9 @@ def dry_run(arm, a, root):
     print("reasoning effort  %s (%s)" % (arm["reasoning"]["effort"],
                                          "--effort flag" if arm["reasoning"]["pass_effort_flag"]
                                          else "no flag: CLI default, config file or model id"))
+    if "paper_effort" in arm["reasoning"] and not arm["reasoning"]["comparable_with_paper"]:
+        print("                  CHANGED from the paper's %s: not comparable with the paper"
+              % arm["reasoning"]["paper_effort"])
     c = arm["context"]
     print("context policy    %s tokens, %s, enforced=%s%s" % (
         c["working_context_tokens"], c.get("mechanism"), c.get("enforced"),
@@ -446,7 +451,7 @@ def net_check(arm, a):
                 if h.returncode == 0:
                     break
                 time.sleep(2)
-        probe = ["docker", "run", "--rm", "--name", n.probe, "--label", n.label,
+        probe = ["docker", "run", "--rm", "--platform", D.PLATFORM, "--name", n.probe, "--label", n.label,
                  "--log-driver", "none", "--network", n.internal, "--user", "65534:65534",
                  "-e", "HOME=/tmp"]
         for k, v in D.proxy_env(arm).items():
@@ -568,7 +573,7 @@ def research_net_check(arm, a, root):
             if ca.exists() and log.exists() and "policy_loaded" in log.read_text():
                 break
             time.sleep(1)
-        probe = ["docker", "run", "--rm", "--name", n.probe, "--label", n.label,
+        probe = ["docker", "run", "--rm", "--platform", D.PLATFORM, "--name", n.probe, "--label", n.label,
                  "--log-driver", "none", "--network", n.internal, "--user", "65534:65534",
                  "-e", "HOME=/tmp", "-v", "%s:/ca:ro" % paths["research_ca_dir"],
                  "-e", "SSL_CERT_FILE=/ca/mitmproxy-ca-cert.pem",
@@ -807,9 +812,47 @@ def _wait_gateway(ctr, run):
     raise RuntimeError("the gateway did not come up at %s" % url)
 
 
+AGENTS_DIR = Path(__file__).resolve().parents[2] / "agents"
+
+
+def resolve_agents(values):
+    """--agent values (paths or arm keys, comma separated or repeated) to config paths."""
+    out = []
+    for v in values or []:
+        for item in [x.strip() for x in v.split(",") if x.strip()]:
+            p = Path(item)
+            if not p.exists() and not item.endswith(".yaml"):
+                p = AGENTS_DIR / ("%s.yaml" % item)
+            if not p.exists():
+                raise RuntimeError("no arm config %s (see sciexam list-agents)" % item)
+            out.append(p)
+    if not out:
+        raise RuntimeError("--agent is required")
+    return out
+
+
+def load_with_effort(path, levels):
+    arm = C.load_arm(path)
+    level = levels.get(arm["arm"])
+    if level:
+        try:
+            arm = E.apply(arm, level)
+        except E.EffortError as e:
+            raise RuntimeError(str(e))
+    return arm
+
+
 def cmd_run_agent(a):
     from .. import dataset as DS
-    arm = C.load_arm(a.agent)
+    paths = resolve_agents(a.agent)
+    keys = [C.load_arm(p)["arm"] for p in paths]
+    try:
+        levels = E.parse(a.effort, keys)
+    except E.EffortError as e:
+        raise RuntimeError(str(e))
+    if len(paths) > 1 or a.parallel > 1:
+        return run_batch(a, paths, keys, levels)
+    arm = load_with_effort(paths[0], levels)
     if a.dry_run:
         root = Path(a.data_dir or DS.default_root())
         if not (root / "task").exists():
@@ -826,10 +869,103 @@ def cmd_run_agent(a):
     return live_run(arm, a, root)
 
 
+def run_batch(a, paths, keys, levels):
+    """Run several arms, at most ``a.parallel`` at a time. Each arm runs as its own
+    `sciexam run-agent` process with its own run folder, containers and networks, and writes
+    its output to <batch folder>/<arm>[-<effort>].log."""
+    import threading
+    if a.run_name or a.workdir:
+        raise RuntimeError("--run-name and --workdir name one run, use --batch-dir for several arms")
+    batch = Path(a.batch_dir or ("sciexam_runs/batch-%s" % time.strftime("%m%d-%H%M%S"))).resolve()
+    batch.mkdir(parents=True, exist_ok=True)
+    jobs, seen = [], {}
+    for p, k in zip(paths, keys):
+        level = levels.get(k)
+        name = "%s-%s" % (k, level) if level else k
+        seen[name] = seen.get(name, 0) + 1
+        if seen[name] > 1:
+            name = "%s-%d" % (name, seen[name])
+        argv = [sys.executable, "-m", "sciexam"]
+        if a.data_dir:
+            argv += ["--data-dir", a.data_dir]
+        argv += ["run-agent", "--agent", str(p), "--env-file", a.env_file,
+                 "--name-prefix", a.name_prefix]
+        if not (a.dry_run or a.net_check):
+            argv += ["--workdir", str(batch / name)]
+        if level:
+            argv += ["--effort", level]
+        for flag in ("smoke", "dry_run", "net_check", "no_build", "keep"):
+            if getattr(a, flag):
+                argv.append("--" + flag.replace("_", "-"))
+        for opt in ("hours", "task_data", "paper", "benchmark_self"):
+            v = getattr(a, opt)
+            if v is not None:
+                argv += ["--" + opt.replace("_", "-"), str(v)]
+        jobs.append({"name": name, "arm": k, "effort": level, "argv": argv,
+                     "log": batch / ("%s.log" % name), "rc": None})
+    _hr("batch of %d arm(s), %d at a time, folder %s" % (len(jobs), a.parallel, batch))
+    for j in jobs:
+        print("  %-28s effort %-7s log %s" % (j["name"], j["effort"] or "paper", j["log"].name))
+    gate = threading.Semaphore(max(1, a.parallel))
+    start_lock = threading.Lock()
+
+    def work(j):
+        with gate:
+            with start_lock:
+                time.sleep(1.1)   # run keys carry the start second, so no two runs share one
+            print("start  %s" % j["name"], flush=True)
+            with open(j["log"], "w") as f:
+                j["rc"] = subprocess.run(j["argv"], stdout=f, stderr=subprocess.STDOUT).returncode
+            print("done   %s  exit %d" % (j["name"], j["rc"]), flush=True)
+
+    threads = [threading.Thread(target=work, args=(j,)) for j in jobs]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    summary = [{k: (str(v) if isinstance(v, Path) else v) for k, v in j.items() if k != "argv"}
+               for j in jobs]
+    (batch / "batch.json").write_text(json.dumps(summary, indent=1) + "\n")
+    _hr("batch finished")
+    for j in jobs:
+        print("  %-28s exit %-3s %s" % (j["name"], j["rc"], j["log"]))
+    return 0 if all(j["rc"] == 0 for j in jobs) else 1
+
+
+def cmd_list_agents(a):
+    """The arms in agents/, their route, the credential each needs and the effort levels."""
+    rows = []
+    for p in sorted(AGENTS_DIR.glob("*.yaml")):
+        arm = C.load_arm(p)
+        cond = (arm.get("condition") or {}).get("name")
+        rows.append((arm["arm"], arm.get("display_name") or "", arm["scaffold"]["name"],
+                     arm["route"]["kind"], C.required_credentials(arm)[0][0],
+                     arm["reasoning"]["effort"], "/".join(E.options(arm)), E.mechanism(arm),
+                     cond or ""))
+    head = ("arm", "system", "scaffold", "route", "credential", "paper", "effort options",
+            "how the level is set", "condition")
+    w = [max(len(str(r[i])) for r in rows + [head]) for i in range(len(head))]
+    for r in [head] + rows:
+        print("  ".join(str(c).ljust(w[i]) for i, c in enumerate(r)).rstrip())
+    print("\nRun several arms with --agent kimi,gpt56 --parallel 2, and choose a level with "
+          "--effort high or --effort kimi=high,gpt56=low. A level other than the paper's is "
+          "recorded as not comparable with the paper.")
+    return 0
+
+
 def register(sub):
     p = sub.add_parser("run-agent", help="rerun one ranked arm or condition run with the released "
                                          "harness (Docker, the user's own credentials)")
-    p.add_argument("--agent", required=True, help="arm config, e.g. agents/kimi.yaml")
+    p.add_argument("--agent", action="append", required=True,
+                   help="arm config or arm key, e.g. agents/kimi.yaml or kimi. Several arms: "
+                        "kimi,gpt56 or repeat --agent")
+    p.add_argument("--effort", help="reasoning effort, low, medium or high: one level for every "
+                                    "arm, or per arm as kimi=high,gpt56=low (default: the paper's "
+                                    "level of each arm, see sciexam list-agents)")
+    p.add_argument("--parallel", type=int, default=1,
+                   help="with several arms, how many run at the same time (default 1)")
+    p.add_argument("--batch-dir", help="with several arms, the folder of their runs and logs "
+                                       "(default ./sciexam_runs/batch-<time>)")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--smoke", action="store_true",
                    help="15-minute plumbing check: short caps, Phase 1 not required, not comparable")
@@ -855,6 +991,10 @@ def register(sub):
     p.add_argument("--probe-image", help=argparse_suppress())
     p.add_argument("--probe-package", default="six==1.17.0", help=argparse_suppress())
     p.set_defaults(fn=cmd_run_agent)
+
+    p = sub.add_parser("list-agents", help="list the released arms, the credential each needs and "
+                                           "the reasoning effort levels each accepts")
+    p.set_defaults(fn=cmd_list_agents)
 
 
 def argparse_suppress():
