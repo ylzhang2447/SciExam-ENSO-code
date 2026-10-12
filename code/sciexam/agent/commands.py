@@ -11,6 +11,7 @@ from pathlib import Path
 
 from . import conditions as K
 from . import config as C
+from . import custom as X
 from . import docker_env as D
 from . import effort as E
 from . import prompts as P
@@ -283,6 +284,9 @@ def dry_run(arm, a, root):
     print("reasoning effort  %s (%s)" % (arm["reasoning"]["effort"],
                                          "--effort flag" if arm["reasoning"]["pass_effort_flag"]
                                          else "no flag: CLI default, config file or model id"))
+    for k, v in (arm.get("custom") or {}).items():
+        if k != "comparable_with_paper":
+            print("custom            %s: %s  (not comparable with the paper)" % (k, v))
     if "paper_effort" in arm["reasoning"] and not arm["reasoning"]["comparable_with_paper"]:
         print("                  CHANGED from the paper's %s: not comparable with the paper"
               % arm["reasoning"]["paper_effort"])
@@ -752,6 +756,7 @@ def live_run(arm, a, root):
                 "route": arm["route"], "reasoning": arm["reasoning"], "context": arm["context"],
                 "lifecycle": lifecycle, "budget_s": _budget(arm, a), "smoke": a.smoke,
                 "network_allowlist": C.allowlist(arm), "prompt_sha256": P.prompt_digests(),
+                "custom": arm.get("custom"),
                 "task_files": rows, "started_epoch": int(time.time())}
         if cond:
             meta["condition"] = dict(K.summary(arm), **condition_record)
@@ -827,23 +832,34 @@ def resolve_agents(values):
                 raise RuntimeError("no arm config %s (see sciexam list-agents)" % item)
             out.append(p)
     if not out:
-        raise RuntimeError("--agent is required")
+        raise RuntimeError("no agent given")
     return out
 
 
-def load_with_effort(path, levels):
+def load_with_effort(path, levels, a=None):
     arm = C.load_arm(path)
     level = levels.get(arm["arm"])
-    if level:
-        try:
+    try:
+        if level:
             arm = E.apply(arm, level)
-        except E.EffortError as e:
-            raise RuntimeError(str(e))
+        if a is not None:
+            arm = X.apply(arm, getattr(a, "network", None), getattr(a, "allow_host", None))
+    except (E.EffortError, X.CustomError) as e:
+        raise RuntimeError(str(e))
     return arm
 
 
 def cmd_run_agent(a):
     from .. import dataset as DS
+    if not a.agent:
+        if not (a.interactive or sys.stdin.isatty()):
+            raise RuntimeError("--agent is required (run it on a terminal for the interactive setup)")
+        from .wizard import interactive_argv
+        argv = interactive_argv(AGENTS_DIR, env_file=a.env_file)
+        if argv is None:
+            return 1
+        from ..cli import main
+        return main((["--data-dir", a.data_dir] if a.data_dir else []) + ["run-agent"] + argv)
     paths = resolve_agents(a.agent)
     keys = [C.load_arm(p)["arm"] for p in paths]
     try:
@@ -852,7 +868,7 @@ def cmd_run_agent(a):
         raise RuntimeError(str(e))
     if len(paths) > 1 or a.parallel > 1:
         return run_batch(a, paths, keys, levels)
-    arm = load_with_effort(paths[0], levels)
+    arm = load_with_effort(paths[0], levels, a)
     if a.dry_run:
         root = Path(a.data_dir or DS.default_root())
         if not (root / "task").exists():
@@ -897,6 +913,10 @@ def run_batch(a, paths, keys, levels):
         for flag in ("smoke", "dry_run", "net_check", "no_build", "keep"):
             if getattr(a, flag):
                 argv.append("--" + flag.replace("_", "-"))
+        if a.network and a.network != "paper":
+            argv += ["--network", a.network]
+        for h in a.allow_host or []:
+            argv += ["--allow-host", h]
         for opt in ("hours", "task_data", "paper", "benchmark_self"):
             v = getattr(a, opt)
             if v is not None:
@@ -956,12 +976,21 @@ def cmd_list_agents(a):
 def register(sub):
     p = sub.add_parser("run-agent", help="rerun one ranked arm or condition run with the released "
                                          "harness (Docker, the user's own credentials)")
-    p.add_argument("--agent", action="append", required=True,
+    p.add_argument("--agent", action="append",
                    help="arm config or arm key, e.g. agents/kimi.yaml or kimi. Several arms: "
-                        "kimi,gpt56 or repeat --agent")
+                        "kimi,gpt56 or repeat --agent. Without --agent, on a terminal, an "
+                        "interactive setup asks for every setting")
+    p.add_argument("--interactive", action="store_true",
+                   help="ask for the settings interactively (the default without --agent)")
     p.add_argument("--effort", help="reasoning effort, low, medium or high: one level for every "
                                     "arm, or per arm as kimi=high,gpt56=low (default: the paper's "
                                     "level of each arm, see sciexam list-agents)")
+    p.add_argument("--network", choices=X.NETWORKS,
+                   help="paper (default): the model endpoint and PyPI. no-pypi: the model endpoint "
+                        "only. Not comparable with the paper when changed")
+    p.add_argument("--allow-host", action="append",
+                   help="add a host to the agent's allowlist (repeat or comma separate). Not "
+                        "comparable with the paper")
     p.add_argument("--parallel", type=int, default=1,
                    help="with several arms, how many run at the same time (default 1)")
     p.add_argument("--batch-dir", help="with several arms, the folder of their runs and logs "

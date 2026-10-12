@@ -135,7 +135,10 @@ def allowlist(arm):
     """Hosts the agent container may reach through the egress proxy (arms on the allowlist
     network; the web conditions use the research policy instead)."""
     hosts = list(arm["network"]["agent_allow_hosts"])
-    for h in PIP_HOSTS:
+    pypi = arm["network"].get("pypi", True)
+    if not pypi:
+        hosts = [h for h in hosts if h not in PIP_HOSTS]
+    for h in PIP_HOSTS if pypi else ():
         if h not in hosts:
             hosts.append(h)
     if arm["route"]["kind"] == "subscription":
