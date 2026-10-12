@@ -18,44 +18,31 @@ RESET = "\033[0m"
 CLEAR_LINE = "\033[2K"
 HIDE, SHOW = "\033[?25l", "\033[?25h"
 
-# The AI Science Exam logo in line characters: the icon (a slanted stroke fused to a stem, the
-# dot above it) and the wordmark, with A drawn as a lambda and E as three bars, as in the logo.
-GLYPHS = {
-    "A": ["  ╱╲  ", " ╱  ╲ ", "╱    ╲"],
-    "I": ["│", "│", "│"],
-    "S": ["╭───╴", "╰───╮", "╶───╯"],
-    "C": ["╭────", "│    ", "╰────"],
-    "E": ["────", "────", "────"],
-    "N": ["│╲   │", "│ ╲  │", "│  ╲ │"],
-    "X": ["╲   ╱", "  ╳  ", "╱   ╲"],
-    "M": ["│╲  ╱│", "│ ╲╱ │", "│    │"],
-}
-ICON = ["      ●", "     ╱┃", "    ╱ ┃", "   ╱  ┃", "  ╱   ┃"]
-
-
-def _word(text):
-    rows = ["", "", ""]
-    for ch in text:
-        for r in range(3):
-            rows[r] += GLYPHS[ch][r] + " "
-    return rows
+LOGO = [r"   ____       _ _____",
+        r"  / ___|  ___(_) ____|_  ____ _ _ __ ___",
+        r"  \___ \ / __| |  _| \ \/ / _` | '_ ` _ \ ",
+        r"   ___) | (__| | |___ >  < (_| | | | | | |",
+        r"  |____/ \___|_|_____/_/\_\__,_|_| |_| |_|"]
+# The AI Science Exam icon in the same lettering: a slanted stroke fused to a stem, the dot above.
+ICON = [r"        (_)",
+        r"       / /|",
+        r"      / / |",
+        r"     / /| |",
+        r"    /_/ |_|"]
 
 
 def logo_lines(color=True):
-    """The logo, five rows, SCIENCE and the dot in orange when ``color``."""
+    """The icon beside the SciExam lettering, five rows. With ``color`` the stroke is bold and
+    the dot and the lettering are orange."""
     o, b, r = (ORANGE, BOLD, RESET) if color else ("", "", "")
-    ai, sci, exam = _word("AI"), _word("SCIENCE"), _word("EXAM")
     out = []
-    for k, ic in enumerate(ICON):
-        ic = ic.replace("●", o + "●" + r + b) if "●" in ic else ic
-        line = "  " + b + ic + r + "    "
-        if k >= 2:
-            line += b + ai[k - 2] + r + "   " + o + b + sci[k - 2] + r + "   " + b + exam[k - 2] + r
-        out.append(line)
+    for ic, lt in zip(ICON, LOGO):
+        ic = ic.replace("(_)", o + b + "(_)" + r) if "(_)" in ic else b + ic + r
+        out.append(ic + " " * (12 - len(ICON[0])) + "  " + o + b + lt + r)
     return out
 
 
-LOGO_WIDTH = 2 + len(ICON[0]) + 4 + sum(len(_word(w)[0]) for w in ("AI", "SCIENCE", "EXAM")) + 6
+LOGO_WIDTH = 14 + max(len(x) for x in LOGO)
 
 
 
@@ -192,7 +179,7 @@ class Keys(Plain):
             for ln in logo_lines():
                 self.w.write(ln + "\n")
         else:
-            self.w.write("  " + BOLD + ORANGE + "●" + RESET + BOLD + " ΛI " + ORANGE + "SCIENCE" + RESET + BOLD + " ΞXΛM" + RESET + "\n")
+            self.w.write("  " + ORANGE + BOLD + "SciExam" + RESET + "\n")
         self.w.write("\n  " + BOLD + "SciExam for ENSO" + RESET + DIM + "   Can AI agents build climate models?" + RESET + "\n")
         self.w.write("  " + DIM + subtitle + RESET + "\n")
         self.w.write("  " + DIM + "Arrow keys to move, Enter to choose, left or b to go back, q to quit." + RESET + "\n")
