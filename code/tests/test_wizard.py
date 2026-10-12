@@ -89,3 +89,30 @@ def test_network_overrides():
         X.apply(kimi, None, ["not a host"])
     with pytest.raises(X.CustomError):
         X.apply(C.load_arm(AGENTS / "fable51_web_literature_only.yaml"), "no-pypi")
+
+
+def test_a_smoke_setup_is_remembered_and_becomes_the_full_run(tmp_path):
+    data = tmp_path / "raw"
+    data.mkdir()
+    pdf = tmp_path / "jin1997.pdf"
+    pdf.write_bytes(b"%PDF")
+    # first start: smoke for kimi and gpt56, gpt56 at low, two at a time
+    argv, _ = drive(["2", "kimi,gpt56", "", "1", "", "2", str(data), str(pdf), "1"])
+    assert argv[:7] == ["--agent", "kimi,gpt56", "--effort", "gpt56=low", "--parallel", "2", "--smoke"]
+    # next start: "full run" goes straight to the summary with every answer kept
+    argv, text = drive(["2", "1"])
+    assert argv == ["--agent", "kimi,gpt56", "--effort", "gpt56=low", "--parallel", "2",
+                    "--task-data", str(data), "--paper", str(pdf)]
+    assert "repeat the last setup: smoke, kimi, gpt56" in text
+    # "last" repeats it as it was, and "new" asks everything again
+    argv, _ = drive(["1", "1"])
+    assert "--smoke" not in argv and argv[:2] == ["--agent", "kimi,gpt56"]   # the last start was the full run
+    argv, _ = drive(["2", "", "", "", "", ""])          # after a full run the choices are last and new
+    assert argv == ["--agent", "deepseek", "--dry-run"]
+
+
+def test_back_from_a_remembered_summary_reaches_the_earlier_steps():
+    drive(["1", "kimi", "", "", ""])                          # saves a dry run of kimi
+    argv, _ = drive(["1", "2", "b", "b", "gpt56", "", "", ""])
+    # summary -> back -> settings -> back -> effort -> back -> agents: choose gpt56 instead
+    assert argv == ["--agent", "gpt56", "--dry-run"]

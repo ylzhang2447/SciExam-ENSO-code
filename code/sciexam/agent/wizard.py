@@ -8,6 +8,7 @@ and the equivalent command line, and starts only when asked to. Every step can g
 one before it. The prompts come from `tui`: arrow-key menus on a terminal, numbered choices
 elsewhere.
 """
+import json
 import shlex
 import sys
 from pathlib import Path
@@ -22,6 +23,12 @@ MODES = [
     ("smoke", "15-minute check of containers, credentials and network. Uses your account"),
     ("full", "the benchmark run, 6 h per agent by default. Uses your account"),
 ]
+# The last setup that was started, so the next run can repeat it, or turn a smoke run into the
+# full run without answering every question again. Kept next to the run folders.
+SETUP_FILE = Path("sciexam_runs") / "last_setup.json"
+SAVED_KEYS = ("mode", "levels", "custom", "hours", "network", "net_choice", "hosts", "parallel",
+              "task_data", "paper")
+
 NETWORK_CHOICES = [
     ("paper", "the model endpoint and PyPI, as in the paper"),
     ("no-pypi", "the model endpoint only, no package installs"),
@@ -89,8 +96,35 @@ class Wizard:
             k += 1
         self.s["levels"] = levels
 
+    def step_start(self):
+        saved = self.saved
+        if not saved:
+            raise Skip()
+        self.ui.heading("Start from")
+        desc = "%s, %s, %s" % (saved["mode"], ", ".join(saved["agents"]),
+                               "custom settings" if saved.get("custom") else "paper settings")
+        opts = [("last", "repeat the last setup: " + desc)]
+        if saved["mode"] != "full":
+            opts.append(("full run", "the last setup as the full benchmark run"))
+        opts.append(("new", "answer every question again"))
+        i = self.ui.select("Use the last setup", opts, 0)
+        choice = opts[i][0]
+        self.s = {}
+        if choice != "new":
+            self.s = {k: saved[k] for k in SAVED_KEYS if k in saved}
+            names = [a["arm"] for _, a in self.rows]
+            idx = [names.index(k) for k in saved["agents"]]      # in the order they were chosen
+            self.s["picked_idx"] = idx
+            self.s["picked"] = [self.rows[n] for n in idx]
+            if choice == "full run":
+                self.s["mode"] = "full"
+            self.jump = True
+
     def step_settings(self):
         self.ui.heading("Settings")
+        if self.s["mode"] == "smoke":
+            self.ui.note("A smoke run checks the network you will use for the full run, so it takes "
+                         "these settings too. Its run time is fixed at 15 minutes.")
         cur = 1 if self.s.get("custom") else 0
         i = self.ui.select("Run settings", [("paper", "the paper's run time and network"),
                                             ("custom", "change the run time or the network")], cur)
@@ -224,12 +258,14 @@ class Wizard:
         return argv[2:]
 
     # ---- driver -----------------------------------------------------------------------------
-    def run(self, env_file=".env"):
+    def run(self, env_file=".env", setup_file=SETUP_FILE):
         self.env_file = env_file
         self.rows = self.arms()
+        self.saved = load_setup(setup_file, [a["arm"] for _, a in self.rows])
+        self.jump = False
         self.ui.banner("Set up a run. Nothing starts until you choose start at the end.")
-        steps = [self.step_mode, self.step_agents, self.step_effort, self.step_settings,
-                 self.step_parallel, self.step_data, self.step_review]
+        steps = [self.step_start, self.step_mode, self.step_agents, self.step_effort,
+                 self.step_settings, self.step_parallel, self.step_data, self.step_review]
         history, k = [], 0
         while True:
             try:
@@ -243,8 +279,22 @@ class Wizard:
                 k = history.pop()
                 continue
             if k == len(steps) - 1:
+                save_setup(setup_file, self.s)
                 return out
             history.append(k)
+            if self.jump:
+                # a saved setup: go straight to the summary (or to the data step when a live run
+                # still needs its data), with every earlier step one Back away
+                self.jump = False
+                history += [1, 2, 3, 4] + ([5] if len(self.s["picked"]) > 1 else [])
+                live = self.s["mode"] != "dry-run"
+                if live and not (self.s.get("task_data") and self.s.get("paper")):
+                    k = 6
+                else:
+                    if live:
+                        history.append(6)
+                    k = 7
+                continue
             k += 1
 
     def command(self):
@@ -271,6 +321,29 @@ class Wizard:
         if self.env_file != ".env":
             argv += ["--env-file", self.env_file]
         return argv
+
+
+def load_setup(path, known_arms):
+    """The saved setup, or None when there is none or it names an arm that no longer exists."""
+    try:
+        d = json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(d, dict) or not d.get("agents") or d.get("mode") not in [m[0] for m in MODES]:
+        return None
+    if any(a not in known_arms for a in d["agents"]):
+        return None
+    return d
+
+
+def save_setup(path, s):
+    d = {k: s[k] for k in SAVED_KEYS if k in s}
+    d["agents"] = [a["arm"] for _, a in s["picked"]]
+    try:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        Path(path).write_text(json.dumps(d, indent=1) + "\n")
+    except OSError:
+        pass
 
 
 class Skip(Exception):

@@ -154,8 +154,18 @@ class Keys(Plain):
 
     # ---- the interface ----------------------------------------------------------------------
     def banner(self, subtitle):
-        self.w.write(ORANGE + BOLD + LOGO + RESET)
-        self.w.write("  " + BOLD + "SciExam for ENSO" + RESET + DIM + "   AI Science Exam" + RESET + "\n")
+        icon = _icon_lines()
+        if icon:
+            # the AI Science Exam icon as 256-colour half blocks, the wordmark beside it
+            word = {len(icon) // 2 - 2: BOLD + "A I   " + ORANGE + "S C I E N C E" + RESET + BOLD + "   E X A M" + RESET,
+                    len(icon) // 2: "SciExam for ENSO",
+                    len(icon) // 2 + 1: DIM + "Can AI agents build climate models?" + RESET}
+            self.w.write("\n")
+            for k, ln in enumerate(icon):
+                self.w.write("  " + ln + "   " + word.get(k, "") + "\n")
+        else:
+            self.w.write(ORANGE + BOLD + LOGO + RESET)
+            self.w.write("  " + BOLD + "SciExam for ENSO" + RESET + DIM + "   AI Science Exam" + RESET + "\n")
         self.w.write("  " + DIM + subtitle + RESET + "\n")
         self.w.write("  " + DIM + "Arrow keys to move, Enter to choose, left or b to go back, q to quit." + RESET + "\n")
         self.w.flush()
@@ -254,6 +264,18 @@ class Keys(Plain):
     def confirm(self, question, default=False):
         k = self.select(question, [("Yes", ""), ("No", "")], 0 if default else 1)
         return k == 0
+
+
+def _icon_lines():
+    """The banner icon (assets/logo_icon.ans, made from the logo kit), or None on a terminal
+    without 256 colours."""
+    from pathlib import Path
+    if "256" not in os.environ.get("TERM", "") and os.environ.get("COLORTERM") not in ("truecolor", "24bit"):
+        return None
+    try:
+        return (Path(__file__).parent / "assets" / "logo_icon.ans").read_text().splitlines()
+    except OSError:
+        return None
 
 
 def backend():
