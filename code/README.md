@@ -55,6 +55,8 @@ same time (five grading jobs in total), so each is a little slower alone than on
 | `sciexam run-agent --agent agents/ARM.yaml --dry-run` | assembles the agent container, task tree, prompts and network policy without starting an agent | under 0.1 s |
 | `sciexam run-agent --agent agents/ARM.yaml --net-check` | starts the arm's networks and proxy, shows that a non-allowlisted host is refused and PyPI is reachable, removes everything | about 5 s |
 | `sciexam run-agent --agent agents/ARM.yaml --hours 6` | reruns one agent for the full budget (needs your own credentials) | 6 h of eligible time |
+| `sciexam list-agents` | lists the arms, the credential each needs and the reasoning effort levels each accepts | under 1 s |
+| `sciexam run-agent --agent kimi,gpt56 --parallel 2 --effort kimi=high,gpt56=low --hours 6` | reruns several arms, two at a time, each at the chosen effort | 6 h per arm, arms in parallel |
 | `sciexam grade-run RUN_DIR --offset S` | grades every checkpoint of a run and reports its final and best scores | about 40 s per checkpoint and job |
 
 ## Grading
@@ -160,6 +162,27 @@ The agents received Jin (1997) as a PDF, which is under the publisher's copyrigh
 distributed. `fetch-paper` prints the citation and the DOI and, with `--file`, checks the sha256 of
 your copy against the one the agents used and places it in a task folder.
 
+## Requirements
+
+| | grading and regrading | rerunning an agent |
+|---|---|---|
+| software | Python 3.10 or newer, Docker, git | the same, plus your own model credentials (`.env`, see `.env.example`) |
+| CPU and memory | each grading job starts two containers of 2 CPUs, each capped at 4 GB, so plan 4 CPUs and up to 8 GB per job (`--jobs`) | the agent container, an allowlist proxy (256 MB) and, for OpenRouter arms, a LiteLLM gateway. The agent container has no CPU or memory cap. We suggest 2 CPUs and 4 GB per concurrent run, which is a planning figure, not a measured requirement |
+| disk | about 1 GB for the grading image and 20 MB for the dataset | the agent and gateway images of the arms you run, and the run folders |
+| network | only to fetch packages and images once | the model endpoint of the arm's route and PyPI, through the allowlist proxy |
+| time | see the table above | 6 h of eligible time per run. Provider pauses are credited, so the wall time can reach 18 h (`max_wall_multiple` 3) |
+| cost | none | every run is billed to, or counted against, your own account |
+
+Hosts. The reference host is Linux on x86_64. Every image is built and run for `linux/amd64`
+because `environment/requirements.lock` and the agent image pin x86_64 builds by sha256, so the
+released numbers come from that platform. On an arm64 host (Apple Silicon) Docker runs the same
+images under emulation: the numbers are the same, the runs are slower. On an Apple M-series Mac
+(8 CPUs and 8 GB given to Docker), `sciexam grade --split final --jobs 1` reproduced all 13
+records, with about 6 min per model instead of under 1 min, and GPT-6 Astra took 71 min, past the
+default 3600 s limit. Pass `--timeout 14400` there. `SCIEXAM_PLATFORM` overrides
+the platform, at the cost of exactness and, for the grading image, of the pinned hashes. Windows
+with WSL 2 and Docker has not been tested.
+
 ## Rerunning the benchmark
 
 A full rerun of one system takes four steps: rebuild the observations the agents receive, supply
@@ -202,6 +225,67 @@ model, copy the configuration closest to it and change only the model:
 
 `sciexam run-agent --agent your.yaml --dry-run` shows the resulting setup before anything starts.
 Keep the budget, lifecycle and tool envelope unchanged for results comparable with the paper.
+
+### Interactive setup
+
+```
+sciexam run-agent
+```
+
+Without `--agent`, on a terminal, `run-agent` asks for the run one step at a time instead of taking
+flags: the mode (dry run, smoke run or full run), the agents, the reasoning effort of each, the
+settings (the paper's, or a custom run time and network), how many agents run at once, and the task
+data and paper of a live run. It then shows which credentials are set (never their values), a
+summary, and the equivalent command line for scripts, and starts only when you choose start; for a
+live run the default is to go back. Arrow keys move, Enter chooses, Space ticks agents, the left
+arrow or `b` goes back a step and `q` quits. On a terminal without raw key input, or with
+`NO_COLOR` or `SCIEXAM_PLAIN` set, the same questions are numbered prompts.
+
+The setup that was started is saved to `sciexam_runs/last_setup.json`. The next start offers to
+repeat it, to run it as the full run (after a smoke or dry run), or to start new. A remembered
+setup opens at the summary, with every earlier step one step back and its answers kept.
+
+Custom settings map to these flags, each recorded as not comparable with the paper:
+
+| setting | flag |
+|---|---|
+| run time per agent | `--hours H` |
+| network: the model endpoint only, no PyPI | `--network no-pypi` |
+| network: the paper's hosts plus others | `--allow-host data.example.org` (repeat or comma separate) |
+
+The web conditions use the research proxy and take neither network flag.
+
+### Several arms and reasoning effort
+
+```
+sciexam list-agents
+sciexam run-agent --agent kimi,gpt56,opus5 --parallel 2 --task-data prepared/raw --paper PDF --hours 6
+sciexam run-agent --agent kimi,gpt56 --effort kimi=high,gpt56=low --task-data prepared/raw --paper PDF --hours 6
+sciexam run-agent --agent fable51 --effort high --dry-run
+```
+
+`--agent` takes a config path or an arm key, and several of them, comma separated or repeated.
+With more than one arm, `--parallel N` runs at most N at a time. Each arm runs as its own
+`sciexam run-agent` process with its own containers and networks, writes its run folder to
+`--batch-dir` (default `sciexam_runs/batch-<time>`) and its output to `<arm>[-<effort>].log`
+there, and `batch.json` records the exit code of each. `--dry-run`, `--net-check` and `--smoke`
+work on a batch too. Grade each run afterwards with `sciexam grade-run`.
+
+`--effort` chooses the reasoning effort: `low`, `medium` or `high`, one level for every arm, or
+per arm as `kimi=high,gpt56=low` (`all=medium` sets the arms not named). Without it each arm
+runs at the level of its formal run. `sciexam list-agents` shows that level and how each scaffold
+receives another one:
+
+| scaffold | how the level is set |
+|---|---|
+| Claude Code, subscription arms | the `--effort` flag, as in the formal runs |
+| Claude Code, OpenRouter arms | the formal runs passed no flag and ran at the CLI default, high. `high` reproduces that exactly; `low` and `medium` add the flag, which LiteLLM forwards to the upstream model. Whether a provider honors it depends on the provider |
+| Codex | `model_reasoning_effort` in the run's `config.toml` |
+| Antigravity | the model variant: the level is the suffix of the model id, so `--effort low` selects `gemini-3.8-flash-low`, which must exist in your Antigravity CLI |
+
+A run at a level other than its formal run prints `CHANGED ... not comparable with the paper` in
+the dry run, and its provenance records `reasoning.paper_effort` and
+`reasoning.comparable_with_paper: false`.
 
 ### What the harness does
 

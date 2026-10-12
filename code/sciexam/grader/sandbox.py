@@ -28,6 +28,10 @@ PREFIX = os.environ.get("SCIEXAM_CONTAINER_PREFIX", "sciexam-")
 PKG_DIR = Path(sciexam.__file__).resolve().parent
 STAGED_FILES = ("model.py", "params.json", "nondim_scales.json", "model_card.md")
 USER = "65534:65534"
+# The grading image is built and run for linux/amd64 on every host. requirements.lock pins the
+# x86_64 wheels by sha256 (the environment of the released numbers), so on an arm64 host such as
+# Apple Silicon Docker builds and runs the same image under emulation instead of failing.
+PLATFORM = os.environ.get("SCIEXAM_PLATFORM", "linux/amd64")
 
 
 def docker():
@@ -47,7 +51,7 @@ def image_present(image=IMAGE):
 
 
 def build_image(image=IMAGE, quiet=False):
-    argv = docker() + ["build", "-t", image, str(environment_dir())]
+    argv = docker() + ["build", "--platform", PLATFORM, "-t", image, str(environment_dir())]
     if quiet:
         argv.insert(len(docker()) + 1, "-q")
     t0 = time.time()
@@ -80,7 +84,7 @@ def stage(sub_dir, dest, fallback_scales=None):
 
 def _common(name, cpus, memory):
     return docker() + [
-        "run", "--rm", "-i", "--name", name,
+        "run", "--rm", "-i", "--platform", PLATFORM, "--name", name,
         "--log-driver", "none", "--network", "none",
         "--user", USER, "--read-only", "--tmpfs", "/tmp:rw,size=1g",
         "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
