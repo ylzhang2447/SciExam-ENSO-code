@@ -176,7 +176,10 @@ your copy against the one the agents used and places it in a task folder.
 Hosts. The reference host is Linux on x86_64. Every image is built and run for `linux/amd64`
 because `environment/requirements.lock` and the agent image pin x86_64 builds by sha256, so the
 released numbers come from that platform. On an arm64 host (Apple Silicon) Docker runs the same
-images under emulation: the numbers are the same, the runs are slower. `SCIEXAM_PLATFORM` overrides
+images under emulation: the numbers are the same, the runs are slower. On an Apple M-series Mac
+(8 CPUs and 8 GB given to Docker), `sciexam grade --split final --jobs 1` reproduced all 13
+records, with about 6 min per model instead of under 1 min, and GPT-6 Astra took 71 min, past the
+default 3600 s limit. Pass `--timeout 14400` there. `SCIEXAM_PLATFORM` overrides
 the platform, at the cost of exactness and, for the grading image, of the pinned hashes. Windows
 with WSL 2 and Docker has not been tested.
 
