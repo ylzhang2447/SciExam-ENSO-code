@@ -226,6 +226,35 @@ model, copy the configuration closest to it and change only the model:
 `sciexam run-agent --agent your.yaml --dry-run` shows the resulting setup before anything starts.
 Keep the budget, lifecycle and tool envelope unchanged for results comparable with the paper.
 
+### Interactive setup
+
+```
+sciexam run-agent
+```
+
+Without `--agent`, on a terminal, `run-agent` asks for the run one step at a time instead of taking
+flags: the mode (dry run, smoke run or full run), the agents, the reasoning effort of each, the
+settings (the paper's, or a custom run time and network), how many agents run at once, and the task
+data and paper of a live run. It then shows which credentials are set (never their values), a
+summary, and the equivalent command line for scripts, and starts only when you choose start; for a
+live run the default is to go back. Arrow keys move, Enter chooses, Space ticks agents, the left
+arrow or `b` goes back a step and `q` quits. On a terminal without raw key input, or with
+`NO_COLOR` or `SCIEXAM_PLAIN` set, the same questions are numbered prompts.
+
+The setup that was started is saved to `sciexam_runs/last_setup.json`. The next start offers to
+repeat it, to run it as the full run (after a smoke or dry run), or to start new. A remembered
+setup opens at the summary, with every earlier step one step back and its answers kept.
+
+Custom settings map to these flags, each recorded as not comparable with the paper:
+
+| setting | flag |
+|---|---|
+| run time per agent | `--hours H` |
+| network: the model endpoint only, no PyPI | `--network no-pypi` |
+| network: the paper's hosts plus others | `--allow-host data.example.org` (repeat or comma separate) |
+
+The web conditions use the research proxy and take neither network flag.
+
 ### Several arms and reasoning effort
 
 ```
