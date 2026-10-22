@@ -36,7 +36,7 @@ def test_defaults_give_a_dry_run_of_the_first_arm():
 
 
 def test_two_arms_with_a_changed_effort_and_parallel():
-    argv, text = drive(["1", "kimi,gpt56", "2", "", "1", "", "", "2", ""])
+    argv, text = drive(["1", "kimi,gpt56", "2", "", "1", "", "", "", ""])
     assert argv == ["--agent", "kimi,gpt56", "--effort", "gpt56=low", "--parallel", "2", "--dry-run"]
     assert "changed from medium" in text
 
@@ -52,7 +52,7 @@ def test_going_back_and_custom_settings():
 
 
 def test_back_from_the_summary_changes_the_settings():
-    # customize: 6 h and no PyPI, then back from the summary to the settings and choose the paper's
+    # customize: 6 h and no PyPI, then back from the summary to the settings and choose the default
     argv, text = drive(["1", "kimi", "2", "", "6", "2", "2", "b", "b", "1", "1"])
     assert "--network" not in argv and "model endpoint only" in text
     assert argv == ["--agent", "kimi", "--dry-run"]
@@ -101,7 +101,7 @@ def test_a_smoke_setup_is_remembered_and_becomes_the_full_run(tmp_path):
     pdf = tmp_path / "jin1997.pdf"
     pdf.write_bytes(b"%PDF")
     # first start: smoke for kimi and gpt56, gpt56 at low, two at a time
-    argv, _ = drive(["2", "kimi,gpt56", "2", "", "1", "", "2", str(data), str(pdf), "me@example.org", "1"])
+    argv, _ = drive(["2", "kimi,gpt56", "2", "", "1", "", "", str(data), str(pdf), "me@example.org", "1"])
     assert argv[:7] == ["--agent", "kimi,gpt56", "--effort", "gpt56=low", "--parallel", "2", "--smoke"]
     # next start: "full run" goes straight to the summary with every answer kept
     argv, text = drive(["2", "1"])
@@ -143,8 +143,13 @@ def test_adding_a_local_model_asks_its_context_window():
     assert "ranked apart from the paper" in "\n".join(lines)
 
 
-def test_paper_settings_skip_every_option_and_clear_old_changes():
-    # customize with gpt56 at low and two at a time, then back to the settings and choose the paper's
-    argv, text = drive(["1", "kimi,gpt56", "2", "", "1", "", "", "2", "b", "b", "b", "b", "1", ""])
-    assert argv == ["--agent", "kimi,gpt56", "--dry-run"]
+def test_default_settings_skip_every_option_and_clear_old_changes():
+    # customize with gpt56 at low and one at a time, then back to the settings and choose the default
+    argv, text = drive(["1", "kimi,gpt56", "2", "", "1", "", "", "1", "b", "b", "b", "b", "1", ""])
+    assert argv == ["--agent", "kimi,gpt56", "--parallel", "2", "--dry-run"]
     assert "Reasoning effort" in text and "not comparable" not in text.split("Summary")[-1]
+
+
+def test_default_settings_run_up_to_three_at_a_time():
+    argv, _ = drive(["1", "kimi,gpt56,deepseek,glm52", "", ""])
+    assert argv == ["--agent", "kimi,gpt56,deepseek,glm52", "--parallel", "3", "--dry-run"]

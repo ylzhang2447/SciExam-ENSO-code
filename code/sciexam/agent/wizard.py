@@ -30,6 +30,9 @@ SETUP_FILE = Path("sciexam_runs") / "last_setup.json"
 SAVED_KEYS = ("mode", "levels", "custom", "hours", "network", "net_choice", "hosts", "parallel",
               "task_data", "paper", "contact")
 
+# the leaderboard runs were made two or three agents at a time
+DEFAULT_PARALLEL = 3
+
 NETWORK_CHOICES = [
     ("paper", "the model endpoint and PyPI, as in the paper"),
     ("no-pypi", "the model endpoint only, no package installs"),
@@ -189,7 +192,7 @@ class Wizard:
             raise Skip()
         self.ui.heading("Start from")
         desc = "%s, %s, %s" % (saved["mode"], ", ".join(saved["agents"]),
-                               "custom settings" if saved.get("custom") else "paper settings")
+                               "custom settings" if saved.get("custom") else "default settings")
         opts = [("last", "repeat the last setup: " + desc)]
         if saved["mode"] != "full":
             opts.append(("full run", "the last setup as the full benchmark run"))
@@ -214,12 +217,13 @@ class Wizard:
                          "these settings too. Its run time is fixed at 15 minutes.")
         cur = 1 if self.s.get("custom") else 0
         i = self.ui.select("Run settings", [
-            ("paper", "the paper's reasoning effort, run time (6 h) and network, one agent at a time"),
+            ("default", "as on the official leaderboard: its reasoning effort, run time (6 h) and "
+                        "network, up to %d agents at a time" % DEFAULT_PARALLEL),
             ("customize", "choose the effort, run time, network and how many agents run at once")], cur)
         self.s["custom"] = i == 1
         if not self.s["custom"]:
             self.s.update(levels={}, hours=None, network="paper", net_choice="paper", hosts=[],
-                          parallel=1)
+                          parallel=min(len(self.s["picked"]), DEFAULT_PARALLEL))
 
     def step_runtime(self):
         if not self.s.get("custom"):
@@ -267,13 +271,15 @@ class Wizard:
 
     def step_parallel(self):
         n = len(self.s["picked"])
-        if n < 2 or not self.s.get("custom"):
+        if n < 2:
             self.s["parallel"] = 1
+            raise Skip()
+        if not self.s.get("custom"):
             raise Skip()
         self.ui.heading("Parallel runs")
         opts = [(str(k), "agent at a time" if k == 1 else "agents at a time") for k in range(1, n + 1)]
-        self.s["parallel"] = self.ui.select("How many run at the same time", opts,
-                                            self.s.get("parallel", 1) - 1) + 1
+        cur = self.s.get("parallel") or min(n, DEFAULT_PARALLEL)
+        self.s["parallel"] = self.ui.select("How many run at the same time", opts, min(cur, n) - 1) + 1
 
     def step_data(self):
         if self.s["mode"] == "dry-run":
