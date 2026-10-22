@@ -140,7 +140,7 @@ def test_adding_a_local_model_asks_its_context_window():
     lines = []
     w = Wizard(AGENTS, ui=Plain(ask=lambda q: next(it), out=lines.append), check_openrouter=False)
     assert w.run() == ["--agent", "local-llama-4", "--dry-run"]
-    assert "ranked apart from the paper" in "\n".join(lines)
+    assert "ranked apart from the official leaderboard" in "\n".join(lines)
 
 
 def test_default_settings_skip_every_option_and_clear_old_changes():

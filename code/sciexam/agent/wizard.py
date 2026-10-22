@@ -34,9 +34,9 @@ SAVED_KEYS = ("mode", "levels", "custom", "hours", "network", "net_choice", "hos
 DEFAULT_PARALLEL = 3
 
 NETWORK_CHOICES = [
-    ("paper", "the model endpoint and PyPI, as in the paper"),
+    ("paper", "the model endpoint and PyPI, as on the official leaderboard"),
     ("no-pypi", "the model endpoint only, no package installs"),
-    ("extra", "the paper's setting plus hosts you name"),
+    ("extra", "the leaderboard's setting plus hosts you name"),
 ]
 
 
@@ -148,8 +148,8 @@ class Wizard:
                         continue
                     self.ui.note("added %s (%s), configuration in %s" % (st["name"], st["route"], path))
                     if st.get("context") and st["context"] < NM.PAPER_CONTEXT:
-                        self.ui.note("its context window, %d tokens, is smaller than the paper's 200,000: "
-                                     "the run is ranked apart from the paper" % st["context"])
+                        self.ui.note("its context window, %d tokens, is smaller than the leaderboard's 200,000: "
+                                     "the run is ranked apart from the official leaderboard" % st["context"])
                     return path
             except Back:
                 if sub == 0:
@@ -160,8 +160,8 @@ class Wizard:
         if not self.s.get("custom"):
             raise Skip()
         self.ui.heading("Reasoning effort")
-        self.ui.note("The paper's level is preselected. Another level is recorded as not "
-                     "comparable with the paper.")
+        self.ui.note("The official leaderboard's level is preselected. Another level is recorded "
+                     "as not comparable with the official leaderboard.")
         levels = dict(self.s.get("levels", {}))
         picked = self.s["picked"]
         k = 0
@@ -169,7 +169,7 @@ class Wizard:
             arm = picked[k][1]
             paper = arm["reasoning"]["effort"]
             opts = E.options(arm)
-            choices = [(lv, "paper" if lv == paper else "") for lv in opts]
+            choices = [(lv, "leaderboard" if lv == paper else "") for lv in opts]
             cur = levels.get(arm["arm"], paper)
             try:
                 i = self.ui.select("%s  (%s)" % (arm["arm"], E.mechanism(arm)), choices,
@@ -242,7 +242,7 @@ class Wizard:
                                 return None if 0 < float(v) <= 48 else "a number of hours from 0 to 48"
                             except ValueError:
                                 return "a number of hours, for example 2 or 0.5"
-                        h = self.ui.text("Run time per agent in hours (paper: 6)",
+                        h = self.ui.text("Run time per agent in hours (leaderboard: 6)",
                                          str(self.s.get("hours") or 6), check)
                         self.s["hours"] = None if float(h) == 6 else float(h)
                     sub = 1
@@ -341,7 +341,7 @@ class Wizard:
         if s.get("hosts"):
             self.ui.note("extra     %s  (changed)" % ", ".join(s["hosts"]))
         if s["levels"] or s.get("hours") or s.get("network", "paper") != "paper" or s.get("hosts"):
-            self.ui.note("Changed settings are recorded as not comparable with the paper.")
+            self.ui.note("Changed settings are recorded as not comparable with the official leaderboard.")
         self.ui.note("")
         self.ui.note("The same run from the command line:")
         self.ui.note("  " + " ".join(shlex.quote(x) for x in argv))

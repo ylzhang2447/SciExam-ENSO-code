@@ -290,9 +290,9 @@ def dry_run(arm, a, root):
                                          else "no flag: CLI default, config file or model id"))
     for k, v in (arm.get("custom") or {}).items():
         if k != "comparable_with_paper":
-            print("custom            %s: %s  (not comparable with the paper)" % (k, v))
+            print("custom            %s: %s  (not comparable with the official leaderboard)" % (k, v))
     if "paper_effort" in arm["reasoning"] and not arm["reasoning"]["comparable_with_paper"]:
-        print("                  CHANGED from the paper's %s: not comparable with the paper"
+        print("                  CHANGED from the leaderboard's %s: not comparable with the official leaderboard"
               % arm["reasoning"]["paper_effort"])
     c = arm["context"]
     print("context policy    %s tokens, %s, enforced=%s%s" % (
@@ -300,7 +300,7 @@ def dry_run(arm, a, root):
         ", env %s" % c["env"] if c.get("env") else ""))
     print("resource gate     %s" % arm["resource_gate"])
     if arm.get("declared"):
-        print("declared          %s  (not comparable with the paper)" % arm["declared"])
+        print("declared          %s  (not comparable with the official leaderboard)" % arm["declared"])
     if (arm.get("preflight") or {}).get("tool_call"):
         print("preflight         one tool-call request through the gateway before the budget starts")
     print("budget            %.0f s eligible%s" % (budget, "  (SMOKE, not comparable)" if a.smoke else ""))
@@ -1027,7 +1027,7 @@ def run_batch(a, paths, keys, levels):
                      "log": batch / ("%s.log" % name), "rc": None})
     _hr("batch of %d arm(s), %d at a time, folder %s" % (len(jobs), a.parallel, batch))
     for j in jobs:
-        print("  %-28s effort %-7s log %s" % (j["name"], j["effort"] or "paper", j["log"].name))
+        print("  %-28s effort %-7s log %s" % (j["name"], j["effort"] or "leaderboard", j["log"].name))
     gate = threading.Semaphore(max(1, a.parallel))
     start_lock = threading.Lock()
 
@@ -1071,8 +1071,8 @@ def cmd_list_agents(a):
     for r in [head] + rows:
         print("  ".join(str(c).ljust(w[i]) for i, c in enumerate(r)).rstrip())
     print("\nRun several arms with --agent kimi,gpt56 --parallel 2, and choose a level with "
-          "--effort high or --effort kimi=high,gpt56=low. A level other than the paper's is "
-          "recorded as not comparable with the paper.\nAdd a model with sciexam add-model, or "
+          "--effort high or --effort kimi=high,gpt56=low. A level other than the leaderboard's is "
+          "recorded as not comparable with the official leaderboard.\nAdd a model with sciexam add-model, or "
           "--agent openrouter:<model id> (also claude:, codex:, antigravity:).")
     return 0
 
@@ -1100,8 +1100,8 @@ def cmd_add_model(a):
                                                      NM.TEMPLATES[a.route]))
     print("configuration: %s" % p)
     if arm.get("declared"):
-        print("context window %d tokens, smaller than the paper's 200,000: the agent compacts at "
-              "%s tokens, and the run is ranked apart from the paper" % (
+        print("context window %d tokens, smaller than the leaderboard's 200,000: the agent compacts at "
+              "%s tokens, and the run is ranked apart from the official leaderboard" % (
                   arm["declared"]["context_tokens"], arm["context"]["env"]["CLAUDE_CODE_MAX_CONTEXT_TOKENS"]))
     print("check it:  sciexam run-agent --agent %s --dry-run" % arm["arm"])
     return 0
@@ -1117,14 +1117,15 @@ def register(sub):
     p.add_argument("--interactive", action="store_true",
                    help="ask for the settings interactively (the default without --agent)")
     p.add_argument("--effort", help="reasoning effort, low, medium or high: one level for every "
-                                    "arm, or per arm as kimi=high,gpt56=low (default: the paper's "
-                                    "level of each arm, see sciexam list-agents)")
+                                    "arm, or per arm as kimi=high,gpt56=low (default: the official "
+                                    "leaderboard's level of each arm, see sciexam list-agents)")
     p.add_argument("--network", choices=X.NETWORKS,
-                   help="paper (default): the model endpoint and PyPI. no-pypi: the model endpoint "
-                        "only. Not comparable with the paper when changed")
+                   help="paper (default): the model endpoint and PyPI, as on the official leaderboard. "
+                        "no-pypi: the model endpoint only. Not comparable with the official "
+                        "leaderboard when changed")
     p.add_argument("--allow-host", action="append",
                    help="add a host to the agent's allowlist (repeat or comma separate). Not "
-                        "comparable with the paper")
+                        "comparable with the official leaderboard")
     p.add_argument("--contact", help="email or GitHub handle written into the run for its "
                                      "leaderboard submission (remembered after the first use)")
     p.add_argument("--parallel", type=int, default=1,
@@ -1161,7 +1162,7 @@ def register(sub):
                                            "the reasoning effort levels each accepts")
     p.set_defaults(fn=cmd_list_agents)
 
-    p = sub.add_parser("add-model", help="add a model that the paper did not run, on the protocol "
+    p = sub.add_parser("add-model", help="add a model that is not on the official leaderboard, on the protocol "
                                          "of the released arm of its route")
     p.add_argument("--route", required=True, choices=sorted(NM.TEMPLATES),
                    help="; ".join("%s: %s" % kv for kv in NM.ROUTE_LABELS.items()))

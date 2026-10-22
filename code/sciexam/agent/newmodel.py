@@ -185,8 +185,9 @@ def make(route, model_id, name=None, api_base=None, key=None, context_tokens=Non
                 text = _set(text, "working_context_tokens", str(n), "context")
                 text = re.sub(r"(CLAUDE_CODE_MAX_CONTEXT_TOKENS:)\s*\d+",
                               r"\g<1> %d" % int(n * COMPACT_FRACTION), text)
-                text += ("\n# The model's context window is smaller than the paper's 200,000 tokens, so the\n"
-                         "# agent compacts at 80%% of it. A declared change: ranked apart from the paper.\n"
+                text += ("\n# The model's context window is smaller than the leaderboard's 200,000 tokens, so\n"
+                         "# the agent compacts at 80%% of it. A declared change: ranked apart from the\n"
+                         "# official leaderboard.\n"
                          "declared:\n  context_tokens: %d\n" % n)
     d = user_dir()
     d.mkdir(parents=True, exist_ok=True)

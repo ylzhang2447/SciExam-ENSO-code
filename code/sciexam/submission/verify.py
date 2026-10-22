@@ -172,12 +172,12 @@ def check_run(sub, arm, rep):
     custom = meta.get("custom") or {}
     allow = meta.get("network_allowlist")
     if allow == paper:
-        rep.add("network", "pass", "the paper's allowlist: %s" % ", ".join(paper))
+        rep.add("network", "pass", "the official leaderboard's allowlist: %s" % ", ".join(paper))
     elif custom.get("network") or custom.get("extra_allowed_hosts"):
         rep.add("network", "declared", "custom: %s" % ", ".join(
             "%s %s" % (k, v) for k, v in custom.items() if k != "comparable_with_paper"))
     else:
-        rep.add("network", "fail", "allowlist %s differs from the paper's %s and was not declared"
+        rep.add("network", "fail", "allowlist %s differs from the official leaderboard's %s and was not declared"
                 % (allow, paper))
 
     re_ = meta.get("reasoning") or {}
