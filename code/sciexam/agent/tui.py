@@ -174,6 +174,8 @@ class Keys(Plain):
         self.w = sys.stdout
         self._drawn = 0
         self._size = None
+        self._subtitle = None     # the banner, and the current step's heading and notes, are kept
+        self._step = []           # so that a resize can draw the whole page again
 
     # ---- terminal plumbing ------------------------------------------------------------------
     def _key(self):
@@ -206,6 +208,10 @@ class Keys(Plain):
         cols, rows = size
         if not first and size != self._size:
             self.w.write("\033[H\033[2J")
+            if self._subtitle is not None:
+                self._banner()
+            for ln in self._step:
+                self.w.write(ln + "\n")
             first = True
         self._size = size
         top = [header] if header else []
@@ -225,6 +231,12 @@ class Keys(Plain):
 
     # ---- the interface ----------------------------------------------------------------------
     def banner(self, subtitle):
+        self._subtitle = subtitle
+        self._banner()
+        self.w.flush()
+
+    def _banner(self):
+        subtitle = self._subtitle
         self.w.write("\n")
         if shutil.get_terminal_size((100, 24)).columns >= LOGO_WIDTH:
             for ln in logo_lines():
@@ -234,12 +246,13 @@ class Keys(Plain):
         self.w.write("\n  " + BOLD + "SciExam for ENSO" + RESET + DIM + "   Can AI agents build climate models?" + RESET + "\n")
         self.w.write("  " + DIM + subtitle + RESET + "\n")
         self.w.write("  " + DIM + "Arrow keys to move, Enter to choose, left or b to go back, q to quit." + RESET + "\n")
-        self.w.flush()
 
     def heading(self, text):
+        self._step = ["", ORANGE + BOLD + text + RESET]
         self.w.write("\n" + ORANGE + BOLD + text + RESET + "\n")
 
     def note(self, text):
+        self._step.append("  " + DIM + text + RESET)
         self.w.write("  " + DIM + text + RESET + "\n")
 
     def select(self, question, options, default=0):

@@ -209,6 +209,9 @@ def test_a_resized_terminal_gets_a_clean_redraw(monkeypatch):
     monkeypatch.setattr(tui.shutil, "get_terminal_size", lambda fallback=None: size[0])
     k = tui.Keys()
     k.w = io.StringIO()
+    k.banner("Set up a run.")
+    k.heading("Mode")
+    k.note("a note of this step")
     k._draw(["  > smoke  x", "    full   y"], True, header="Mode")
     k._draw(["    smoke  x", "  > full   y"], False, header="Mode")
     assert "\033[2J" not in k.w.getvalue() and "\033[3A" in k.w.getvalue()    # same size: in place
@@ -217,3 +220,4 @@ def test_a_resized_terminal_gets_a_clean_redraw(monkeypatch):
     k._draw(["  > smoke  x", "    full   y"], False, header="Mode")
     out = k.w.getvalue()
     assert out.startswith("\033[H\033[2J") and "\033[3A" not in out and "Mode" in out
+    assert "SciExam for ENSO" in out and "Set up a run." in out and "a note of this step" in out
