@@ -27,7 +27,7 @@ MODES = [
 # full run without answering every question again. Kept next to the run folders.
 SETUP_FILE = Path("sciexam_runs") / "last_setup.json"
 SAVED_KEYS = ("mode", "levels", "custom", "hours", "network", "net_choice", "hosts", "parallel",
-              "task_data", "paper")
+              "task_data", "paper", "contact")
 
 NETWORK_CHOICES = [
     ("paper", "the model endpoint and PyPI, as in the paper"),
@@ -199,11 +199,19 @@ class Wizard:
                         self.s.get("task_data") or "prepared/raw",
                         lambda v: None if Path(v).is_dir() else "no such folder: %s" % v)
                     sub = 1
-                else:
+                elif sub == 1:
                     self.s["paper"] = self.ui.text(
                         "Path to the Jin (1997) PDF (sciexam fetch-paper explains how to get it)",
                         self.s.get("paper") or "",
                         lambda v: None if v and Path(v).is_file() else "no such file: %s" % (v or "(empty)"))
+                    sub = 2
+                else:
+                    # written into the run now, so its submission never has to ask
+                    from .ledger import load_profile
+                    self.s["contact"] = self.ui.text(
+                        "Contact for the leaderboard (email or GitHub handle, kept for later runs)",
+                        self.s.get("contact") or load_profile().get("contact") or "",
+                        lambda v: None if v.strip() else "a contact is needed to submit the run")
                     return
             except Back:
                 if sub == 0:
@@ -318,6 +326,8 @@ class Wizard:
             argv += ["--task-data", s["task_data"]]
         if s.get("paper"):
             argv += ["--paper", s["paper"]]
+        if s.get("contact") and s["mode"] != "dry-run":
+            argv += ["--contact", s["contact"]]
         if self.env_file != ".env":
             argv += ["--env-file", self.env_file]
         return argv

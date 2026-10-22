@@ -308,6 +308,53 @@ Antigravity) are not part of this repository: `environment/agent/Dockerfile` ins
 time from their official sources at a pinned version with a sha256 check, and each user signs in
 with their own account.
 
+## Submitting a run to the leaderboard
+
+```
+sciexam package-run sciexam_runs/kimi-1012-0930 --out my-submission
+sciexam verify-submission my-submission
+```
+
+A run carries what its submission needs, fixed when it starts so that nothing has to be
+remembered after six hours: `run-agent` writes into `run_meta.json` the leaderboard name (the
+arm's display name, followed by any setting changed from the paper), the contact (`--contact`, or
+asked once by the interactive setup and kept in `~/.cache/sciexam/profile.json`), and how many full
+runs of the same system, this one included, the run ledger `~/.cache/sciexam/runs.jsonl` holds.
+The calendar offset is left to the maintainers, who judge it from the model as the paper did, and
+the checks grade both conventions. `package-run` options override any of these.
+
+Every checkpoint is hashed when it is written and chained to the one before it, and when the run
+ends `run-agent` seals the results folder (`SEAL.json`: the sha256 of every file and the last chain
+value). `package-run` refuses a folder changed, added to or removed from after its run.
+
+`package-run` copies from the run folder only what the leaderboard needs: the final checkpoint
+(`final/`), every checkpoint (`checkpoints/round_NN/`), the run records and the seal (`logs/`), the
+arm configuration (`agent.yaml`), `metadata.json` and `MANIFEST.sha256`. It never copies the agent
+workspace, which holds your sign-in files, and it stops without writing anything if a copied file
+contains one of your credential values or a common secret pattern.
+
+`verify-submission` runs the checks the maintainers run, and prints each as `ok`, `decl` or `FAIL`:
+
+| check | passes when |
+|---|---|
+| manifest | every file matches `MANIFEST.sha256` and none is unlisted |
+| seal | every checkpoint and log matches the seal written when the run ended, and the checkpoints reproduce its chain |
+| arm configuration | `agent.yaml` follows the protocol of a released arm. A new model may change its model, names and scaffold version, not the budget, lifecycle, tool envelope, network or context policy |
+| prompts | every agent-facing text has the sha256 of this harness |
+| scaffold and model, lifecycle | the run used the configuration in `agent.yaml` and the formal lifecycle (no smoke runs) |
+| budget, network, reasoning effort | the paper's settings, or `decl` when the run recorded a change (`--hours`, `--network`, `--allow-host`, `--effort`) |
+| run completion | the run finished its full eligible budget |
+| checkpoints | one checkpoint per snapshot event, and `final/` is the last one |
+| egress log | every connection went to a host on the allowlist |
+| regrade | the final model scores in the sandbox, at the stated calendar offset or at both 0 and -1 (and matches `claimed_scores` in `metadata.json`, if given) |
+
+The verdict is `consistent`, `consistent, declared changes` (ranked apart from the paper's
+settings) or `inconsistent`. The run records are written on your own machine, so the checks show
+that a submission is internally consistent and reproduces its score, and the seal rules out edits
+after the run. They cannot rule out a harness rewritten to record something else. A consistent submission is listed as self-reported, with its run records published for
+anyone to inspect, and the maintainers read them before it is listed. Only a run on infrastructure
+the maintainers control is listed as verified.
+
 ## Rerunning the Claude Fable 5.1 condition runs
 
 ```
