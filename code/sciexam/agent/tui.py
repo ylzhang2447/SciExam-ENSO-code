@@ -8,6 +8,8 @@ Two backends share one interface (heading, note, select, multiselect, text, conf
             with NO_COLOR or SCIEXAM_PLAIN set, and by the tests.
 """
 import os
+import re
+import shutil
 import sys
 
 ORANGE = "\033[38;5;208m"
@@ -17,6 +19,35 @@ BOLD = "\033[1m"
 RESET = "\033[0m"
 CLEAR_LINE = "\033[2K"
 HIDE, SHOW = "\033[?25l", "\033[?25h"
+_ANSI = re.compile(r"(\033\[[0-9;?]*[A-Za-z])")
+
+
+def clip(line, width):
+    """``line`` cut to ``width`` visible characters (colour codes kept, not counted), ending in an
+    ellipsis when it was cut. A menu line must never wrap: the redraw moves up one row per line."""
+    out, n, cut = [], 0, False
+    for tok in _ANSI.split(line):
+        if _ANSI.fullmatch(tok):
+            out.append(tok)
+        elif not cut:
+            if n + len(tok) > width:
+                tok, cut = tok[:max(0, width - n - 1)] + "\u2026", True
+            out.append(tok)
+            n += len(tok)
+    return "".join(out) + (RESET if cut else "")
+
+
+def window(lines, focus, rows):
+    """At most ``rows`` of ``lines``: all of them when they fit, else a slice around ``focus``
+    between two lines that count what is above and below. Always ``rows`` long once it scrolls,
+    so every redraw covers the same rows."""
+    if len(lines) <= rows:
+        return lines
+    n = max(1, rows - 2)
+    start = min(max(0, focus - n // 2), len(lines) - n)
+    above, below = start, len(lines) - start - n
+    return ([DIM + ("  \u2191 %d more" % above if above else "") + RESET] + lines[start:start + n]
+            + [DIM + ("  \u2193 %d more" % below if below else "") + RESET])
 
 LOGO = [r"   ____       _ _____",
         r"  / ___|  ___(_) ____|_  ____ _ _ __ ___",
@@ -141,6 +172,7 @@ class Keys(Plain):
     def __init__(self):
         super().__init__()
         self.w = sys.stdout
+        self._drawn = 0
 
     # ---- terminal plumbing ------------------------------------------------------------------
     def _key(self):
@@ -164,16 +196,26 @@ class Keys(Plain):
             raise KeyboardInterrupt
         return ch.decode(errors="ignore").lower()
 
-    def _draw(self, lines, first):
-        if not first:
-            self.w.write("\033[%dA" % len(lines))
-        for ln in lines:
+    def _draw(self, lines, first, focus=0, footer=None):
+        """Draw a menu, or redraw it over the last one: clipped to the width and scrolled to fit
+        the height, so it takes exactly one row per line however narrow the terminal is."""
+        cols, rows = shutil.get_terminal_size((100, 24))
+        shown = window(lines, focus, max(3, rows - 3 - (1 if footer else 0)))
+        shown = [clip(ln, max(10, cols - 1)) for ln in shown + ([footer] if footer else [])]
+        if not first and self._drawn:
+            self.w.write("\033[%dA" % self._drawn)
+        for ln in shown:
             self.w.write("\r" + CLEAR_LINE + ln + "\n")
+        extra = self._drawn - len(shown) if not first else 0
+        for _ in range(max(0, extra)):                # a shorter menu after a resize
+            self.w.write("\r" + CLEAR_LINE + "\n")
+        if extra > 0:
+            self.w.write("\033[%dA" % extra)
+        self._drawn = len(shown)
         self.w.flush()
 
     # ---- the interface ----------------------------------------------------------------------
     def banner(self, subtitle):
-        import shutil
         self.w.write("\n")
         if shutil.get_terminal_size((100, 24)).columns >= LOGO_WIDTH:
             for ln in logo_lines():
@@ -203,7 +245,7 @@ class Keys(Plain):
                         lines.append("  " + ORANGE + BOLD + "> " + label.ljust(10) + RESET + " " + desc)
                     else:
                         lines.append("    " + label.ljust(10) + " " + DIM + desc + RESET)
-                self._draw(lines, first)
+                self._draw(lines, first, focus=i)
                 first = False
                 key = self._key()
                 if key == "up":
@@ -237,8 +279,7 @@ class Keys(Plain):
                     else:
                         style = "" if k in on else DIM
                         lines.append("    " + mark + " " + style + label.ljust(32) + " " + desc + RESET)
-                lines.append(DIM + "  %d selected" % len(on) + RESET)
-                self._draw(lines, first)
+                self._draw(lines, first, focus=i, footer=DIM + "  %d selected" % len(on) + RESET)
                 first = False
                 key = self._key()
                 if key == "up":

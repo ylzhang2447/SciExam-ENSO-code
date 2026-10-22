@@ -180,3 +180,22 @@ def test_the_real_checks_name_what_is_missing(tmp_path, monkeypatch):
     monkeypatch.setenv("PATH", str(tmp_path))                 # no docker on the PATH
     out = {w: (ok, d) for w, ok, d in W.setup_checks({"task_data": None, "paper": None})}
     assert out["Docker"] == (False, "not installed: https://docs.docker.com/get-docker/")
+
+
+def test_menus_never_wrap_or_overflow_a_small_terminal(monkeypatch):
+    import io
+    import os
+    import re
+    from sciexam.agent import tui
+    monkeypatch.setattr(tui.shutil, "get_terminal_size", lambda fallback=None: os.terminal_size((40, 12)))
+    k = tui.Keys()
+    k.w = io.StringIO()
+    lines = ["    ( ) %-32s a long description of agent number %d" % ("arm%d" % n, n) for n in range(30)]
+    for first, focus in ((True, 0), (False, 15), (False, 29)):
+        k.w = io.StringIO()
+        k._draw(lines, first, focus=focus, footer="  1 selected")
+        rows = [re.sub(r"\033\[[0-9;?]*[A-Za-z]", "", r).lstrip("\r") for r in k.w.getvalue().split("\n")[:-1]]
+        assert len(rows) == 9 and all(len(r) <= 39 for r in rows)        # 12 rows, 40 columns
+        assert any("arm%d " % focus in r for r in rows)                  # the cursor's line is shown
+    assert "more" in rows[0] and rows[-1] == "  1 selected"
+    assert tui.clip("abc", 10) == "abc" and tui.clip("abcdefghijkl", 5) == "abcd…" + tui.RESET
