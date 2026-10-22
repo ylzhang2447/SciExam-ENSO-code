@@ -173,6 +173,7 @@ class Keys(Plain):
         super().__init__()
         self.w = sys.stdout
         self._drawn = 0
+        self._size = None
 
     # ---- terminal plumbing ------------------------------------------------------------------
     def _key(self):
@@ -196,12 +197,20 @@ class Keys(Plain):
             raise KeyboardInterrupt
         return ch.decode(errors="ignore").lower()
 
-    def _draw(self, lines, first, focus=0, footer=None):
+    def _draw(self, lines, first, focus=0, footer=None, header=None):
         """Draw a menu, or redraw it over the last one: clipped to the width and scrolled to fit
-        the height, so it takes exactly one row per line however narrow the terminal is."""
-        cols, rows = shutil.get_terminal_size((100, 24))
-        shown = window(lines, focus, max(3, rows - 3 - (1 if footer else 0)))
-        shown = [clip(ln, max(10, cols - 1)) for ln in shown + ([footer] if footer else [])]
+        the height, so it takes exactly one row per line however narrow the terminal is. After
+        the terminal was resized the rows drawn before may have wrapped, so the screen is cleared
+        and the menu drawn again from the top instead of over them."""
+        size = tuple(shutil.get_terminal_size((100, 24)))
+        cols, rows = size
+        if not first and size != self._size:
+            self.w.write("\033[H\033[2J")
+            first = True
+        self._size = size
+        top = [header] if header else []
+        shown = window(lines, focus, max(3, rows - 3 - len(top) - (1 if footer else 0)))
+        shown = [clip(ln, max(10, cols - 1)) for ln in top + shown + ([footer] if footer else [])]
         if not first and self._drawn:
             self.w.write("\033[%dA" % self._drawn)
         for ln in shown:
@@ -235,7 +244,8 @@ class Keys(Plain):
 
     def select(self, question, options, default=0):
         i = default
-        self.w.write(BOLD + question + RESET + DIM + "  (up/down, Enter, left to go back)" + RESET + "\n" + HIDE)
+        header = BOLD + question + RESET + DIM + "  (up/down, Enter, left to go back)" + RESET
+        self.w.write(HIDE)
         first = True
         try:
             while True:
@@ -245,7 +255,7 @@ class Keys(Plain):
                         lines.append("  " + ORANGE + BOLD + "> " + label.ljust(10) + RESET + " " + desc)
                     else:
                         lines.append("    " + label.ljust(10) + " " + DIM + desc + RESET)
-                self._draw(lines, first, focus=i)
+                self._draw(lines, first, focus=i, header=header)
                 first = False
                 key = self._key()
                 if key == "up":
@@ -265,8 +275,9 @@ class Keys(Plain):
     def multiselect(self, question, options, default=(0,), names=None):
         on = set(default)
         i = 0
-        self.w.write(BOLD + question + RESET + DIM + "  (up/down, Space to tick, a for all, Enter, left to go back)"
-                     + RESET + "\n" + HIDE)
+        header = (BOLD + question + RESET + DIM + "  (up/down, Space to tick, a for all, Enter, "
+                  "left to go back)" + RESET)
+        self.w.write(HIDE)
         first = True
         try:
             while True:
@@ -279,7 +290,8 @@ class Keys(Plain):
                     else:
                         style = "" if k in on else DIM
                         lines.append("    " + mark + " " + style + label.ljust(32) + " " + desc + RESET)
-                self._draw(lines, first, focus=i, footer=DIM + "  %d selected" % len(on) + RESET)
+                self._draw(lines, first, focus=i, footer=DIM + "  %d selected" % len(on) + RESET,
+                           header=header)
                 first = False
                 key = self._key()
                 if key == "up":
