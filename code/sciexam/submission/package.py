@@ -204,6 +204,8 @@ def package(run_dir, out, system_name=None, contact=None, offset=None, runs_atte
 
 
 def _comparable(meta, arm):
+    if arm.get("declared"):
+        return False
     if meta.get("budget_s") != float(arm["budget"]["eligible_seconds"]):
         return False
     r = meta.get("reasoning") or {}

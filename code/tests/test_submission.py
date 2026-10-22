@@ -223,3 +223,14 @@ def test_ledger_counts_runs_of_the_same_system(tmp_path, monkeypatch):
     assert LG.record_start(E.apply(kimi, "low"), 21600, "c", tmp_path) == 1   # another system
     assert LG.record_start(kimi, 7200, "d", tmp_path) == 1
     assert LG.system_name(E.apply(kimi, "low"), 7200) == "Kimi K3 (effort low, 2 h)"
+
+
+def test_a_declared_context_window_is_ranked_apart(tmp_path, monkeypatch):
+    from sciexam.agent import newmodel as NM
+    monkeypatch.setenv("SCIEXAM_AGENTS", str(tmp_path / "agents"))
+    path = NM.make("local", "llama-4", api_base="http://localhost:8000/v1", context_tokens=32768)
+    md = pack(tmp_path, make_run(tmp_path, arm=C.load_arm(path)), agent_config=path)
+    assert md["comparable_with_paper"] is False
+    rep = V.verify(tmp_path / "sub", _root(), grade=False)
+    assert statuses(rep)["arm configuration"] == "declared"
+    assert rep["verdict"] == "consistent, declared changes", rep["checks"]

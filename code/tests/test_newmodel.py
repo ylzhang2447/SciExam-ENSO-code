@@ -77,3 +77,50 @@ def test_released_gateway_configs_are_unchanged():
     # the paper's arms keep their provider pins exactly
     cfg = D.gateway_config(C.load_arm(AGENTS / "kimi.yaml"))
     assert "provider: {order: [moonshotai], allow_fallbacks: false}" in cfg
+
+
+def test_context_window_from_openrouter_listing():
+    listing = {"data": [{"id": "a/small", "context_length": 32768},
+                        {"id": "a/big", "top_provider": {"context_length": 1000000}}, {"id": "a/none"}]}
+    assert NM.parse_models(listing, "a/small") == 32768
+    assert NM.parse_models(listing, "a/big") == 1000000
+    assert NM.parse_models(listing, "a/none") == 0
+    assert NM.parse_models(listing, "a/missing") is None
+
+
+def test_a_smaller_context_window_is_declared():
+    arm = C.load_arm(NM.make("local", "llama-4", api_base="http://localhost:8000/v1", context_tokens=32768))
+    assert arm["context"]["working_context_tokens"] == 32768
+    assert arm["context"]["env"]["CLAUDE_CODE_MAX_CONTEXT_TOKENS"] == 26214      # 80% of the window
+    assert arm["declared"] == {"context_tokens": 32768}
+    from sciexam.agent import ledger as LG
+    assert LG.system_name(arm, 21600) == "llama-4 (32k context)"
+    rep = V.Report()
+    import tempfile, shutil
+    d = Path(tempfile.mkdtemp())
+    shutil.copyfile(NM.user_dir() / "local-llama-4.yaml", d / "agent.yaml")
+    V.check_config(d, rep)
+    assert rep.checks[0]["status"] == "declared" and "32768 tokens instead of 200000" in rep.checks[0]["detail"]
+    # a window at least as large as the paper's changes nothing
+    big = C.load_arm(NM.make("openrouter", "a/big", context_tokens=1000000))
+    assert big["context"]["working_context_tokens"] == 200000 and not big.get("declared")
+    with pytest.raises(NM.ModelError):
+        NM.make("local", "tiny", api_base="http://localhost:8000/v1", context_tokens=8000)
+
+
+def test_gateway_routes_get_the_tool_call_preflight():
+    assert C.load_arm(NM.make("openrouter", "a/x"))["preflight"] == {"tool_call": True}
+    assert C.load_arm(NM.make("local", "y", api_base="http://localhost:1/v1"))["preflight"] == {"tool_call": True}
+    assert not C.load_arm(NM.make("claude", "claude-z")).get("preflight")
+    assert not C.load_arm(AGENTS / "kimi.yaml").get("preflight")        # the paper's arms are unchanged
+
+
+def test_tool_call_reply_parsing():
+    from sciexam.agent.commands import tool_call_ok
+    ok, detail = tool_call_ok('{"content": [{"type": "tool_use", "name": "write_file", "input": {"path": "check.txt", "text": "ok"}}]}')
+    assert ok and "write_file" in detail
+    ok, detail = tool_call_ok('{"content": [{"type": "text", "text": "I would write ok."}]}')
+    assert not ok and "without a tool call" in detail
+    ok, detail = tool_call_ok('{"error": "HTTPError: 400", "body": "tools not supported"}')
+    assert not ok and "tools not supported" in detail
+    assert not tool_call_ok("<html>bad gateway</html>")[0]

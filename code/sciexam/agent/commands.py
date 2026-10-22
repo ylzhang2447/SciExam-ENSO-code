@@ -299,6 +299,10 @@ def dry_run(arm, a, root):
         c["working_context_tokens"], c.get("mechanism"), c.get("enforced"),
         ", env %s" % c["env"] if c.get("env") else ""))
     print("resource gate     %s" % arm["resource_gate"])
+    if arm.get("declared"):
+        print("declared          %s  (not comparable with the paper)" % arm["declared"])
+    if (arm.get("preflight") or {}).get("tool_call"):
+        print("preflight         one tool-call request through the gateway before the budget starts")
     print("budget            %.0f s eligible%s" % (budget, "  (SMOKE, not comparable)" if a.smoke else ""))
     print("lifecycle         " + ", ".join("%s=%s" % kv for kv in L.items()))
     cond = arm.get("condition")
@@ -757,6 +761,8 @@ def live_run(arm, a, root):
                                % (binary, ident.get("SHA"), arm["scaffold"]["binary_sha256"]))
         if arm["route"]["kind"] == "gateway":
             _wait_gateway(ctr, run)
+            if (arm.get("preflight") or {}).get("tool_call") and not a.smoke:
+                _preflight_tool_call(ctr, run, arm, creds)
         meta = {"arm": arm["arm"], "run_id": arm.get("run_id"), "scaffold": arm["scaffold"],
                 "route": arm["route"], "reasoning": arm["reasoning"], "context": arm["context"],
                 "lifecycle": lifecycle, "budget_s": _budget(arm, a), "smoke": a.smoke,
@@ -838,6 +844,63 @@ def _wait_gateway(ctr, run):
     raise RuntimeError("the gateway did not come up at %s" % url)
 
 
+# One request in the shape Claude Code sends, through the gateway, that a model can only answer
+# well with a tool call. Run inside the agent container, before the budget starts.
+PREFLIGHT_CODE = r'''
+import json, os, sys, urllib.request
+req = {"model": os.environ["SCIEXAM_ALIAS"], "max_tokens": 512,
+       "tools": [{"name": "write_file", "description": "Write text to a file in the workspace.",
+                  "input_schema": {"type": "object", "properties": {
+                      "path": {"type": "string"}, "text": {"type": "string"}},
+                      "required": ["path", "text"]}}],
+       "tool_choice": {"type": "any"},
+       "messages": [{"role": "user", "content":
+                     "Use the write_file tool to write the text ok to the file check.txt."}]}
+r = urllib.request.Request(os.environ["SCIEXAM_GW"] + "/v1/messages", data=json.dumps(req).encode(),
+                           headers={"content-type": "application/json", "anthropic-version": "2023-06-01",
+                                    "x-api-key": os.environ["SCIEXAM_KEY"]})
+try:
+    print(urllib.request.urlopen(r, timeout=300).read().decode()[:20000])
+except Exception as e:
+    body = getattr(e, "read", lambda: b"")().decode(errors="ignore")[:2000]
+    print(json.dumps({"error": "%s: %s" % (type(e).__name__, e), "body": body}))
+'''
+
+
+def tool_call_ok(text):
+    """(ok, detail) from the gateway's reply to the preflight request."""
+    try:
+        resp = json.loads(text)
+    except ValueError:
+        return False, "the gateway returned no JSON: %s" % text[:200]
+    if resp.get("error"):
+        return False, "%s %s" % (resp["error"], resp.get("body", ""))[:400]
+    calls = [b for b in resp.get("content") or [] if b.get("type") == "tool_use"]
+    if not calls:
+        said = " ".join(b.get("text", "") for b in resp.get("content") or [] if b.get("type") == "text")
+        return False, "the model answered without a tool call: %r" % said[:200]
+    return True, "tool call %s(%s)" % (calls[0].get("name"), json.dumps(calls[0].get("input"))[:120])
+
+
+def _preflight_tool_call(ctr, run, arm, creds):
+    from .docker_env import GATEWAY_ALIAS, GATEWAY_PORT
+    env = {"NO_PROXY": GATEWAY_ALIAS, "SCIEXAM_ALIAS": arm["route"]["model_alias"],
+           "SCIEXAM_GW": "http://%s:%d" % (GATEWAY_ALIAS, GATEWAY_PORT)}
+    # the key passes as -e NAME from this process's environment, never on the command line
+    r = subprocess.run(ctr.exec_argv(["python3", "-c", PREFLIGHT_CODE], env=env, secrets=("SCIEXAM_KEY",)),
+                       capture_output=True, text=True, timeout=360,
+                       env=dict(os.environ, SCIEXAM_KEY=creds["LITELLM_MASTER_KEY"]))
+    ok, detail = tool_call_ok((r.stdout or "").strip())
+    run.log({"event": "preflight_tool_call", "ok": ok, "detail": detail})
+    if not ok:
+        raise RuntimeError(
+            "preflight: %s.\nThe agent acts only through tool calls, so the run was not started. "
+            "Serve the model with tool calling on (for vLLM: --enable-auto-tool-choice and the "
+            "--tool-call-parser of the model; for Ollama: a model with the tools capability), "
+            "or choose another model." % detail)
+    print("preflight: %s" % detail)
+
+
 AGENTS_DIR = Path(__file__).resolve().parents[2] / "agents"
 
 
@@ -854,8 +917,10 @@ def resolve_agents(values):
                 key = NM.slug("%s-%s" % spec)
                 p = NM.user_dir() / ("%s.yaml" % key)
                 if not p.exists():
+                    info = NM.openrouter_info(spec[1]) if spec[0] == "openrouter" else None
                     try:
-                        p = NM.make(spec[0], spec[1])
+                        p = NM.make(spec[0], spec[1],
+                                    context_tokens=(info or {}).get("context_length"))
                     except NM.ModelError as e:
                         raise RuntimeError(str(e))
                     print("added %s as arm %s (%s)" % (spec[1], key, p))
@@ -1013,21 +1078,31 @@ def cmd_list_agents(a):
 
 
 def cmd_add_model(a):
+    context = a.context_tokens
     if a.route == "openrouter" and not a.no_check:
-        ok = NM.check_openrouter(a.model)
-        if ok is False:
+        info = NM.openrouter_info(a.model)
+        if info is None:
+            print("note: could not read OpenRouter's model list, the id is not checked")
+        elif not info["exists"]:
             raise RuntimeError("OpenRouter lists no model %r (see https://openrouter.ai/models), "
                                "or pass --no-check" % a.model)
-        if ok is None:
-            print("note: could not read OpenRouter's model list, the id is not checked")
+        elif context is None:
+            context = info["context_length"]
+    if a.route == "local" and not context:
+        raise RuntimeError("a local model needs --context-tokens: the context window it is served with")
     try:
-        p = NM.make(a.route, a.model, name=a.name, api_base=a.api_base, key=a.key)
+        p = NM.make(a.route, a.model, name=a.name, api_base=a.api_base, key=a.key,
+                    context_tokens=context)
     except NM.ModelError as e:
         raise RuntimeError(str(e))
     arm = C.load_arm(p)
     print("added arm %s: %s on the protocol of %s" % (arm["arm"], arm["route"]["model_id"],
                                                      NM.TEMPLATES[a.route]))
     print("configuration: %s" % p)
+    if arm.get("declared"):
+        print("context window %d tokens, smaller than the paper's 200,000: the agent compacts at "
+              "%s tokens, and the run is ranked apart from the paper" % (
+                  arm["declared"]["context_tokens"], arm["context"]["env"]["CLAUDE_CODE_MAX_CONTEXT_TOKENS"]))
     print("check it:  sciexam run-agent --agent %s --dry-run" % arm["arm"])
     return 0
 
@@ -1095,6 +1170,9 @@ def register(sub):
     p.add_argument("--api-base", help="local route: the OpenAI-compatible endpoint, e.g. "
                                       "http://localhost:8000/v1")
     p.add_argument("--key", help="the arm key (default: route-model)")
+    p.add_argument("--context-tokens", type=int,
+                   help="the model's context window (read from OpenRouter on that route, required on "
+                        "the local route)")
     p.add_argument("--no-check", action="store_true", help="do not check the id against OpenRouter")
     p.set_defaults(fn=cmd_add_model)
 

@@ -108,9 +108,10 @@ class Wizard:
                         if not v or " " in v:
                             return "the model id, for example qwen/qwen3-coder"
                         if st["route"] == "openrouter" and self.check_openrouter:
-                            ok = NM.check_openrouter(v)
-                            if ok is False:
+                            info = NM.openrouter_info(v)
+                            if info and not info["exists"]:
                                 return "OpenRouter lists no model %r (see openrouter.ai/models)" % v
+                            st["context"] = (info or {}).get("context_length")
                         return None
                     hint = {"openrouter": "e.g. qwen/qwen3-coder", "claude": "e.g. claude-opus-5-5",
                             "codex": "e.g. gpt-6", "antigravity": "e.g. gemini-3.9-pro-medium",
@@ -126,21 +127,31 @@ class Wizard:
                         return None
                     st["api_base"] = self.ui.text("Endpoint (OpenAI-compatible, e.g. http://localhost:8000/v1)",
                                                   st.get("api_base", "http://localhost:8000/v1"), check_url)
+                    sub = 4
+                elif sub == 4:
+                    def check_ctx(v):
+                        return None if v.isdigit() and int(v) >= 16000 else "a number of tokens, at least 16000"
+                    st["context"] = int(self.ui.text("Context window the model is served with, in tokens",
+                                                     str(st.get("context") or 131072), check_ctx))
                     sub = 3
                 else:
                     st["name"] = self.ui.text("Display name on the leaderboard", st.get("name") or st["model"])
                     try:
-                        path = NM.make(st["route"], st["model"], name=st["name"], api_base=st.get("api_base"))
+                        path = NM.make(st["route"], st["model"], name=st["name"], api_base=st.get("api_base"),
+                                       context_tokens=st.get("context"))
                     except NM.ModelError as e:
                         self.ui.note(str(e))
                         sub = 1
                         continue
                     self.ui.note("added %s (%s), configuration in %s" % (st["name"], st["route"], path))
+                    if st.get("context") and st["context"] < NM.PAPER_CONTEXT:
+                        self.ui.note("its context window, %d tokens, is smaller than the paper's 200,000: "
+                                     "the run is ranked apart from the paper" % st["context"])
                     return path
             except Back:
                 if sub == 0:
                     raise
-                sub = {1: 0, 2: 1, 3: 2 if st.get("route") == "local" else 1}[sub]
+                sub = {1: 0, 2: 1, 4: 2, 3: 4 if st.get("route") == "local" else 1}[sub]
 
     def step_effort(self):
         self.ui.heading("Reasoning effort")

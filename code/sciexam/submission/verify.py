@@ -109,7 +109,12 @@ def check_config(sub, rep):
                 % (arm["scaffold"]["name"], arm["route"]["kind"]))
         return arm
     diff = [k for k in PROTOCOL_KEYS if _get(arm, k) != _get(t, k)]
-    if diff:
+    declared = (arm.get("declared") or {}).get("context_tokens")
+    ctx = "context.working_context_tokens"
+    if diff == [ctx] and declared == _get(arm, ctx):
+        rep.add("arm configuration", "declared", "protocol of the released arm %s, with the model's "
+                "context window of %d tokens instead of %d" % (t["arm"], declared, _get(t, ctx)))
+    elif diff:
         rep.add("arm configuration", "fail", "differs from the released arm %s in %s"
                 % (t["arm"], ", ".join(diff)))
     else:

@@ -214,7 +214,8 @@ The paper graded each released run under its stated convention (`runs.csv` colum
 
 ```
 sciexam add-model --route openrouter --model qwen/qwen3-coder
-sciexam add-model --route local --model llama-4-70b --api-base http://localhost:8000/v1 --name "Llama 4 70B"
+sciexam add-model --route local --model llama-4-70b --api-base http://localhost:8000/v1 \
+    --context-tokens 131072 --name "Llama 4 70B"
 sciexam run-agent --agent openrouter:qwen/qwen3-coder --dry-run     # adds the model on first use
 ```
 
@@ -231,6 +232,24 @@ setup offers the same as "+ add a model" at the end of its agent list. Configura
 | `codex` | the Codex subscription client | GPT-6 Astra |
 | `antigravity` | the Antigravity client | Gemini 3.8 Flash |
 | `local` | any OpenAI-compatible endpoint (vLLM, Ollama, a lab server), via the LiteLLM gateway. An endpoint on this machine is reached as `host.docker.internal`; `LOCAL_MODEL_API_KEY` is passed if the server needs a key | DeepSeek V4.1 Flash |
+
+Two checks guard the gateway routes, where a model the paper did not run may behave differently
+from the paper's:
+
+* Context window. The paper's runs compact their context at 200,000 tokens. On the OpenRouter
+  route the model's window is read from OpenRouter, and on the local route `--context-tokens` gives
+  it. A window smaller than 200,000 tokens sets the compaction threshold to 80% of it and is
+  recorded under `declared` in the configuration: the run is valid, ranked apart from the paper,
+  and its leaderboard name says so ("Llama 4 70B (131k context)").
+* Tool calls. The agent acts only through tool calls, which LiteLLM translates for the model but
+  which the model itself must make. Before the budget starts, `run-agent` sends one tool-call
+  request through the gateway and stops, with advice, if the model answers without one. Serve a
+  local model with tool calling on (for vLLM, `--enable-auto-tool-choice` and the model's
+  `--tool-call-parser`; for Ollama, a model with the tools capability).
+
+The harness itself does not change for these routes: they run Claude Code through the LiteLLM
+gateway exactly as the paper's OpenRouter systems did. A local server has no provider quota, so its
+errors count as failures, and a slower model makes fewer turns in the same budget.
 
 A model that needs a newer client than the template pins needs `scaffold.version` and
 `scaffold.binary_sha256` updated in its configuration, which the image build checks; that changes

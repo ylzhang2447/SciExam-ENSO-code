@@ -15,6 +15,15 @@ the soft PDF gate that every container had from 11 September on):
                  gateway (template: DeepSeek V4.1 Flash). An endpoint on this machine is reached
                  from the gateway container as host.docker.internal.
 
+Two things differ for a model the paper did not run on the gateway routes:
+
+    context      the paper's runs compact their context at 200,000 tokens. A model with a smaller
+                 window (read from OpenRouter, or given for a local model) gets its own threshold,
+                 80% of its window, recorded under ``declared`` as a change from the paper.
+    tool calls   the agent works only through tool calls, which many local models do not make.
+                 ``preflight.tool_call`` makes run-agent send one tool-call request through the
+                 gateway before the budget starts, and stop with advice if no tool call comes back.
+
 The configuration is written to the user's agents folder (~/.cache/sciexam/agents, or
 SCIEXAM_AGENTS), next to which `list-agents`, `run-agent` and the interactive setup look.
 """
@@ -88,14 +97,35 @@ def _drop(text, key):
     return "\n".join(ln for ln in text.split("\n") if not re.match(r"^%s:" % re.escape(key), ln))
 
 
-def check_openrouter(model_id, timeout=10):
-    """True or False when OpenRouter's public model list could be read, None when it could not."""
+PAPER_CONTEXT = 200000
+COMPACT_FRACTION = 0.8
+
+
+def parse_models(listing, model_id):
+    """From OpenRouter's /models listing: None if the model is absent, else its context length
+    (None when unstated)."""
+    for m in listing.get("data", []):
+        if m.get("id") == model_id:
+            n = m.get("context_length") or (m.get("top_provider") or {}).get("context_length")
+            return int(n) if n else 0
+    return None
+
+
+def openrouter_info(model_id, timeout=10):
+    """{'exists': bool, 'context_length': int or None}, or None when the list cannot be read."""
     try:
         with urllib.request.urlopen("https://openrouter.ai/api/v1/models", timeout=timeout) as r:
-            ids = {m.get("id") for m in json.load(r).get("data", [])}
+            listing = json.load(r)
     except Exception:
         return None
-    return model_id in ids
+    n = parse_models(listing, model_id)
+    return {"exists": n is not None, "context_length": n or None}
+
+
+def check_openrouter(model_id, timeout=10):
+    """True or False when OpenRouter's public model list could be read, None when it could not."""
+    info = openrouter_info(model_id, timeout)
+    return None if info is None else info["exists"]
 
 
 def gateway_api_base(url):
@@ -108,8 +138,9 @@ def gateway_api_base(url):
     return u._replace(netloc=netloc).geturl(), host
 
 
-def make(route, model_id, name=None, api_base=None, key=None):
-    """Write the configuration of a new model and return its path."""
+def make(route, model_id, name=None, api_base=None, key=None, context_tokens=None):
+    """Write the configuration of a new model and return its path. ``context_tokens`` is the
+    model's context window, on the gateway routes."""
     if route not in TEMPLATES:
         raise ModelError("route must be one of %s" % ", ".join(TEMPLATES))
     model_id = (model_id or "").strip()
@@ -142,6 +173,21 @@ def make(route, model_id, name=None, api_base=None, key=None):
                             "  upstream: openai-compatible\n  api_base: %s" % base, 1)
     for k in ("observed_max_context_tokens", "observed_compactions"):
         text = re.sub(r"^\s*%s:.*\n" % k, "", text, flags=re.M)
+    if route in ("openrouter", "local"):
+        text = text.rstrip("\n") + ("\n\n# Before the budget starts, one tool-call request through the gateway checks that\n"
+                                    "# the model makes tool calls, which the agent needs for every action.\n"
+                                    "preflight:\n  tool_call: true\n")
+        if context_tokens:
+            n = int(context_tokens)
+            if n < 16000:
+                raise ModelError("a context window of %d tokens is too small for the task" % n)
+            if n < PAPER_CONTEXT:
+                text = _set(text, "working_context_tokens", str(n), "context")
+                text = re.sub(r"(CLAUDE_CODE_MAX_CONTEXT_TOKENS:)\s*\d+",
+                              r"\g<1> %d" % int(n * COMPACT_FRACTION), text)
+                text += ("\n# The model's context window is smaller than the paper's 200,000 tokens, so the\n"
+                         "# agent compacts at 80%% of it. A declared change: ranked apart from the paper.\n"
+                         "declared:\n  context_tokens: %d\n" % n)
     d = user_dir()
     d.mkdir(parents=True, exist_ok=True)
     path = d / ("%s.yaml" % key)

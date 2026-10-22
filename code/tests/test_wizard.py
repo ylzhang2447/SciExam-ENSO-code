@@ -133,3 +133,11 @@ def test_adding_a_model_from_the_agent_list():
     it = iter(["1", "openrouter-qwen-qwen3-coder", "", "", ""])
     argv = Wizard(AGENTS, ui=Plain(ask=lambda q: next(it), out=lambda x: None)).run()
     assert argv == ["--agent", "openrouter-qwen-qwen3-coder", "--dry-run"]
+
+
+def test_adding_a_local_model_asks_its_context_window():
+    it = iter(["1", "add", "5", "llama-4", "", "32768", "", "", "", ""])
+    lines = []
+    w = Wizard(AGENTS, ui=Plain(ask=lambda q: next(it), out=lines.append), check_openrouter=False)
+    assert w.run() == ["--agent", "local-llama-4", "--dry-run"]
+    assert "ranked apart from the paper" in "\n".join(lines)
