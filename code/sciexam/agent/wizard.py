@@ -375,6 +375,7 @@ class Wizard:
                  self.step_review]
         history, k = [], 0
         while True:
+            self.ui.at_start = not history
             try:
                 out = steps[k]()
             except Skip:

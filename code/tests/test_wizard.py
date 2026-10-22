@@ -221,3 +221,10 @@ def test_a_resized_terminal_gets_a_clean_redraw(monkeypatch):
     out = k.w.getvalue()
     assert out.startswith("\033[H\033[2J") and "\033[3A" not in out and "Mode" in out
     assert "SciExam for ENSO" in out and "Set up a run." in out and "a note of this step" in out
+
+
+def test_back_on_the_first_question_does_nothing(files):
+    data, flags = files
+    argv, text = drive(["b", "2", "kimi", ""] + data + ["1"])
+    assert argv == ["--agent", "kimi"] + flags
+    assert text.splitlines().count("Mode") == 1 and "this is the first question" in text

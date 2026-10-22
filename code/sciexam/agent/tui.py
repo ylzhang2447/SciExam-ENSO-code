@@ -88,6 +88,7 @@ class Back(Exception):
 class Plain:
     """Numbered prompts read with input(). ``ask`` and ``out`` can be replaced for tests."""
     color = False
+    at_start = False      # the first question: there is nothing to go back to, so back is ignored
 
     def __init__(self, ask=input, out=print):
         self.ask_fn, self.out = ask, out
@@ -101,6 +102,9 @@ class Plain:
         if ans.lower() in ("q", "quit", "exit"):
             raise Abort("cancelled")
         if ans.lower() in ("b", "back"):
+            if self.at_start:
+                self.out("  this is the first question")
+                return self._ask(question, default)
             raise Back()
         return ans or default
 
@@ -277,7 +281,7 @@ class Keys(Plain):
                     i = (i + 1) % len(options)
                 elif key == "enter":
                     return i
-                elif key in ("left", "b", "esc"):
+                elif key in ("left", "b", "esc") and not self.at_start:
                     raise Back()
                 elif key == "q":
                     raise Abort("cancelled")
@@ -317,7 +321,7 @@ class Keys(Plain):
                     on = set() if len(on) == len(options) else set(range(len(options)))
                 elif key == "enter" and on:
                     return sorted(on)
-                elif key in ("left", "b", "esc"):
+                elif key in ("left", "b", "esc") and not self.at_start:
                     raise Back()
                 elif key == "q":
                     raise Abort("cancelled")
