@@ -1,15 +1,17 @@
 """Interactive setup of `sciexam run-agent`.
 
 `sciexam run-agent` without --agent, on a terminal, shows the logo and asks for the run one step
-at a time: the mode, the agents, the reasoning effort of each, the settings (the paper's, or
-custom run time and network), how many agents run at once, and the task data and paper for a
-live run. It then checks the credentials (set or missing, never their values), shows a summary
-and the equivalent command line, and starts only when asked to. Every step can go back to the
+at a time: the mode (a smoke run or the full run), the agents, the settings (the official
+leaderboard's, or customized effort, run time, network and parallel runs), and the task data and
+paper. Before it offers to start it checks what a run needs (the dataset, Docker, the task data
+and paper, the credentials: set or missing, never their values), shows a summary and the
+equivalent command line, and starts only when asked to. Every step can go back to the
 one before it. The prompts come from `tui`: arrow-key menus on a terminal, numbered choices
 elsewhere.
 """
 import json
 import shlex
+import subprocess
 import sys
 from pathlib import Path
 
@@ -20,7 +22,6 @@ from . import newmodel as NM
 from .tui import Abort, Back, Plain, backend
 
 MODES = [
-    ("dry-run", "check the setup only. Starts nothing, free"),
     ("smoke", "15-minute check of containers, credentials and network. Uses your account"),
     ("full", "the benchmark run, 6 h per agent by default. Uses your account"),
 ]
@@ -41,10 +42,11 @@ NETWORK_CHOICES = [
 
 
 class Wizard:
-    def __init__(self, agents_dir=None, ui=None, check_openrouter=True):
+    def __init__(self, agents_dir=None, ui=None, check_openrouter=True, checks=None):
         self.agents_dir = Path(agents_dir) if agents_dir else None
         self.ui = ui or backend()
         self.check_openrouter = check_openrouter
+        self.checks = checks or setup_checks
         self.s = {}
 
     # ---- data -------------------------------------------------------------------------------
@@ -61,7 +63,7 @@ class Wizard:
     def step_mode(self):
         self.ui.heading("Mode")
         self.s["mode"] = MODES[self.ui.select("How do you want to run", MODES,
-                                              [m[0] for m in MODES].index(self.s.get("mode", "dry-run")))][0]
+                                              [m[0] for m in MODES].index(self.s.get("mode", "smoke")))][0]
 
     def step_agents(self):
         self.ui.heading("Agents")
@@ -199,7 +201,8 @@ class Wizard:
         opts.append(("new", "answer every question again"))
         i = self.ui.select("Use the last setup", opts, 0)
         choice = opts[i][0]
-        self.s = {}
+        # the data paths and the contact belong to this machine, not to the run: kept as defaults
+        self.s = {k: saved[k] for k in ("task_data", "paper", "contact") if saved.get(k)}
         if choice != "new":
             self.s = {k: saved[k] for k in SAVED_KEYS if k in saved}
             names = [a["arm"] for _, a in self.rows]
@@ -282,9 +285,6 @@ class Wizard:
         self.s["parallel"] = self.ui.select("How many run at the same time", opts, min(cur, n) - 1) + 1
 
     def step_data(self):
-        if self.s["mode"] == "dry-run":
-            self.s.update(task_data=None, paper=None)
-            raise Skip()
         self.ui.heading("Task data and reference paper")
         sub = 0
         while True:
@@ -316,14 +316,19 @@ class Wizard:
 
     def step_review(self):
         s = self.s
-        self.ui.heading("Credentials")
+        # what --dry-run checks, done here every time, so a run never starts on a broken setup
+        self.ui.heading("Checks")
+        problems = []
+        for what, ok, detail in self.checks(s):
+            self.ui.note("%-26s %-8s %s" % (what, "ok" if ok else "PROBLEM", detail))
+            if not ok:
+                problems.append(what)
         env_values = C.read_env_file(self.env_file)
-        missing = []
         for name, what in sorted({c for _, a in s["picked"] for c in C.required_credentials(a)}):
             ok = bool(C.credential(name, env_values))
             self.ui.note("%-26s %-8s %s" % (name, "set" if ok else "MISSING", what))
             if not ok:
-                missing.append(name)
+                problems.append(name)
 
         argv = self.command()
         self.ui.heading("Summary")
@@ -345,16 +350,13 @@ class Wizard:
         self.ui.note("")
         self.ui.note("The same run from the command line:")
         self.ui.note("  " + " ".join(shlex.quote(x) for x in argv))
-        if s["mode"] != "dry-run":
-            self.ui.note("")
-            self.ui.note("This run uses your model account and is billed or counted against it.")
-            if missing:
-                self.ui.note("Credentials are missing (%s), so it would stop at the start."
-                             % ", ".join(missing))
-        live = s["mode"] != "dry-run"
+        self.ui.note("")
+        self.ui.note("This run uses your model account and is billed or counted against it.")
+        if problems:
+            self.ui.note("Fix these first, the run would stop at the start: %s" % ", ".join(problems))
         i = self.ui.select("Ready", [("start", "start the run now"),
                                      ("back", "go back and change something"),
-                                     ("quit", "leave without starting")], 1 if live else 0)
+                                     ("quit", "leave without starting")], 1)
         if i == 1:
             raise Back()
         if i == 2:
@@ -396,12 +398,10 @@ class Wizard:
                 history += [1, 2, 3]
                 if self.s.get("custom"):
                     history += [4, 5] + ([6] if len(self.s["picked"]) > 1 else [])
-                live = self.s["mode"] != "dry-run"
-                if live and not (self.s.get("task_data") and self.s.get("paper")):
+                if not (self.s.get("task_data") and self.s.get("paper") and self.s.get("contact")):
                     k = 7
                 else:
-                    if live:
-                        history.append(7)
+                    history.append(7)
                     k = 8
                 continue
             k += 1
@@ -413,9 +413,7 @@ class Wizard:
             argv += ["--effort", ",".join("%s=%s" % kv for kv in s["levels"].items())]
         if len(s["picked"]) > 1 and s["parallel"] > 1:
             argv += ["--parallel", str(s["parallel"])]
-        if s["mode"] == "dry-run":
-            argv.append("--dry-run")
-        elif s["mode"] == "smoke":
+        if s["mode"] == "smoke":
             argv.append("--smoke")
         if s.get("hours") and s["mode"] != "smoke":
             argv += ["--hours", "%g" % s["hours"]]
@@ -427,7 +425,7 @@ class Wizard:
             argv += ["--task-data", s["task_data"]]
         if s.get("paper"):
             argv += ["--paper", s["paper"]]
-        if s.get("contact") and s["mode"] != "dry-run":
+        if s.get("contact"):
             argv += ["--contact", s["contact"]]
         if self.env_file != ".env":
             argv += ["--env-file", self.env_file]
@@ -455,6 +453,30 @@ def save_setup(path, s):
         Path(path).write_text(json.dumps(d, indent=1) + "\n")
     except OSError:
         pass
+
+
+def setup_checks(s):
+    """(what, ok, detail) for what a run needs besides the credentials: the checks of --dry-run."""
+    from .. import dataset as DS
+    from . import task as T
+    out = []
+    root = Path(DS.default_root())
+    have = (root / "task").is_dir()
+    out.append(("dataset", have, str(root) if have else "missing: run sciexam download"))
+    try:
+        r = subprocess.run(["docker", "info", "--format", "{{.ServerVersion}}"],
+                           capture_output=True, text=True, timeout=20)
+        ok = r.returncode == 0
+        out.append(("Docker", ok, "engine %s" % r.stdout.strip() if ok else
+                    "not running: start Docker Desktop (or the Docker service)"))
+    except FileNotFoundError:
+        out.append(("Docker", False, "not installed: https://docs.docker.com/get-docker/"))
+    except subprocess.TimeoutExpired:
+        out.append(("Docker", False, "did not answer in 20 s: is Docker starting?"))
+    if have:
+        probs = T.plan(root / "task", s.get("task_data"), s.get("paper"))[2]
+        out.append(("task data and paper", not probs, "; ".join(probs) or "every file in place"))
+    return out
 
 
 class Skip(Exception):

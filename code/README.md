@@ -262,19 +262,22 @@ sciexam run-agent
 ```
 
 Without `--agent`, on a terminal, `run-agent` asks for the run one step at a time instead of taking
-flags: the mode (dry run, smoke run or full run), the agents, the reasoning effort of each, the
-settings (the paper's, or a custom run time and network), how many agents run at once, and the task
-data and paper of a live run. It then shows which credentials are set (never their values), a
-summary, and the equivalent command line for scripts, and starts only when you choose start; for a
-live run the default is to go back. Arrow keys move, Enter chooses, Space ticks agents, the left
+flags: the mode (smoke run or full run), the agents, the settings, and the task data and paper.
+The default settings are those of the official leaderboard (its reasoning effort, run time and
+network, up to 3 agents at a time); customize asks for the reasoning effort of each agent, the run
+time, the network and how many agents run at once. Before it offers to start, it runs the checks of
+`--dry-run` (the dataset, Docker, the task data and paper) and shows which credentials are set
+(never their values), then a summary and the equivalent command line for scripts. It starts only
+when you choose start; the default is to go back. Arrow keys move, Enter chooses, Space ticks agents, the left
 arrow or `b` goes back a step and `q` quits. On a terminal without raw key input, or with
 `NO_COLOR` or `SCIEXAM_PLAIN` set, the same questions are numbered prompts.
 
 The setup that was started is saved to `sciexam_runs/last_setup.json`. The next start offers to
-repeat it, to run it as the full run (after a smoke or dry run), or to start new. A remembered
+repeat it, to run it as the full run (after a smoke run), or to start new, which keeps the data paths
+and the contact. A remembered
 setup opens at the summary, with every earlier step one step back and its answers kept.
 
-Custom settings map to these flags, each recorded as not comparable with the paper:
+Custom settings map to these flags, each recorded as not comparable with the official leaderboard:
 
 | setting | flag |
 |---|---|
