@@ -154,6 +154,8 @@ class Wizard:
                 sub = {1: 0, 2: 1, 4: 2, 3: 4 if st.get("route") == "local" else 1}[sub]
 
     def step_effort(self):
+        if not self.s.get("custom"):
+            raise Skip()
         self.ui.heading("Reasoning effort")
         self.ui.note("The paper's level is preselected. Another level is recorded as not "
                      "comparable with the paper.")
@@ -211,15 +213,18 @@ class Wizard:
             self.ui.note("A smoke run checks the network you will use for the full run, so it takes "
                          "these settings too. Its run time is fixed at 15 minutes.")
         cur = 1 if self.s.get("custom") else 0
-        i = self.ui.select("Run settings", [("paper", "the paper's run time and network"),
-                                            ("custom", "change the run time or the network")], cur)
+        i = self.ui.select("Run settings", [
+            ("paper", "the paper's reasoning effort, run time (6 h) and network, one agent at a time"),
+            ("customize", "choose the effort, run time, network and how many agents run at once")], cur)
         self.s["custom"] = i == 1
         if not self.s["custom"]:
-            self.s.update(hours=None, network="paper", hosts=[])
-            return
-        self._custom()
+            self.s.update(levels={}, hours=None, network="paper", net_choice="paper", hosts=[],
+                          parallel=1)
 
-    def _custom(self):
+    def step_runtime(self):
+        if not self.s.get("custom"):
+            raise Skip()
+        self.ui.heading("Run time and network")
         sub = 0
         while True:
             try:
@@ -262,7 +267,7 @@ class Wizard:
 
     def step_parallel(self):
         n = len(self.s["picked"])
-        if n < 2:
+        if n < 2 or not self.s.get("custom"):
             self.s["parallel"] = 1
             raise Skip()
         self.ui.heading("Parallel runs")
@@ -357,8 +362,9 @@ class Wizard:
         self.saved = load_setup(setup_file, [a["arm"] for _, a in self.rows])
         self.jump = False
         self.ui.banner("Set up a run. Nothing starts until you choose start at the end.")
-        steps = [self.step_start, self.step_mode, self.step_agents, self.step_effort,
-                 self.step_settings, self.step_parallel, self.step_data, self.step_review]
+        steps = [self.step_start, self.step_mode, self.step_agents, self.step_settings,
+                 self.step_effort, self.step_runtime, self.step_parallel, self.step_data,
+                 self.step_review]
         history, k = [], 0
         while True:
             try:
@@ -381,14 +387,16 @@ class Wizard:
                 # a saved setup: go straight to the summary (or to the data step when a live run
                 # still needs its data), with every earlier step one Back away
                 self.jump = False
-                history += [1, 2, 3, 4] + ([5] if len(self.s["picked"]) > 1 else [])
+                history += [1, 2, 3]
+                if self.s.get("custom"):
+                    history += [4, 5] + ([6] if len(self.s["picked"]) > 1 else [])
                 live = self.s["mode"] != "dry-run"
                 if live and not (self.s.get("task_data") and self.s.get("paper")):
-                    k = 6
+                    k = 7
                 else:
                     if live:
-                        history.append(6)
-                    k = 7
+                        history.append(7)
+                    k = 8
                 continue
             k += 1
 

@@ -30,20 +30,20 @@ def drive(answers):
 
 
 def test_defaults_give_a_dry_run_of_the_first_arm():
-    argv, text = drive(["", "", "", "", ""])
+    argv, text = drive(["", "", "", ""])
     assert argv == ["--agent", "deepseek", "--dry-run"]
     assert "Credentials" in text and "MISSING" in text
 
 
 def test_two_arms_with_a_changed_effort_and_parallel():
-    argv, text = drive(["1", "kimi,gpt56", "", "1", "", "2", ""])
+    argv, text = drive(["1", "kimi,gpt56", "2", "", "1", "", "", "2", ""])
     assert argv == ["--agent", "kimi,gpt56", "--effort", "gpt56=low", "--parallel", "2", "--dry-run"]
     assert "changed from medium" in text
 
 
 def test_going_back_and_custom_settings():
-    argv, text = drive(["1", "kimi", "b",              # back from the effort step to the agents
-                        "gpt56", "", "2",              # gpt56 at its paper level, custom settings
+    argv, text = drive(["1", "kimi", "b",              # back from the settings to the agents
+                        "gpt56", "2", "",              # gpt56, customize, at its paper level
                         "2", "3", "b", "b",            # 2 h, extra hosts, then back twice to the hours
                         "3", "3", "data.example.org",  # 3 h, extra hosts, one host
                         ""])
@@ -52,8 +52,8 @@ def test_going_back_and_custom_settings():
 
 
 def test_back_from_the_summary_changes_the_settings():
-    # custom: 6 h and no PyPI, then back from the summary and choose the paper's settings
-    argv, text = drive(["1", "kimi", "", "2", "6", "2", "2", "1", "1"])
+    # customize: 6 h and no PyPI, then back from the summary to the settings and choose the paper's
+    argv, text = drive(["1", "kimi", "2", "", "6", "2", "2", "b", "b", "1", "1"])
     assert "--network" not in argv and "model endpoint only" in text
     assert argv == ["--agent", "kimi", "--dry-run"]
 
@@ -64,15 +64,15 @@ def test_live_run_asks_for_data_and_never_starts_by_default(tmp_path):
     pdf = tmp_path / "jin1997.pdf"
     pdf.write_bytes(b"%PDF")
     with pytest.raises(Abort):
-        drive(["3", "kimi", "", "", str(data), str(pdf), "me@example.org", "3"])
-    argv, text = drive(["3", "kimi", "", "", str(data), str(pdf), "me@example.org", "1"])
+        drive(["3", "kimi", "", str(data), str(pdf), "me@example.org", "3"])
+    argv, text = drive(["3", "kimi", "", str(data), str(pdf), "me@example.org", "1"])
     assert argv == ["--agent", "kimi", "--task-data", str(data), "--paper", str(pdf),
                     "--contact", "me@example.org"]
     assert "billed" in text
 
 
 def test_bad_answers_are_asked_again():
-    argv, _ = drive(["9", "1", "nope", "kimi", "7", "2", "", ""])
+    argv, _ = drive(["9", "1", "nope", "kimi", "7", "2", "2", "", "", ""])
     assert argv == ["--agent", "kimi", "--effort", "kimi=medium", "--dry-run"]
 
 
@@ -101,7 +101,7 @@ def test_a_smoke_setup_is_remembered_and_becomes_the_full_run(tmp_path):
     pdf = tmp_path / "jin1997.pdf"
     pdf.write_bytes(b"%PDF")
     # first start: smoke for kimi and gpt56, gpt56 at low, two at a time
-    argv, _ = drive(["2", "kimi,gpt56", "", "1", "", "2", str(data), str(pdf), "me@example.org", "1"])
+    argv, _ = drive(["2", "kimi,gpt56", "2", "", "1", "", "2", str(data), str(pdf), "me@example.org", "1"])
     assert argv[:7] == ["--agent", "kimi,gpt56", "--effort", "gpt56=low", "--parallel", "2", "--smoke"]
     # next start: "full run" goes straight to the summary with every answer kept
     argv, text = drive(["2", "1"])
@@ -111,33 +111,40 @@ def test_a_smoke_setup_is_remembered_and_becomes_the_full_run(tmp_path):
     # "last" repeats it as it was, and "new" asks everything again
     argv, _ = drive(["1", "1"])
     assert "--smoke" not in argv and argv[:2] == ["--agent", "kimi,gpt56"]   # the last start was the full run
-    argv, _ = drive(["2", "", "", "", "", ""])          # after a full run the choices are last and new
+    argv, _ = drive(["2", "", "", "", ""])              # after a full run the choices are last and new
     assert argv == ["--agent", "deepseek", "--dry-run"]
 
 
 def test_back_from_a_remembered_summary_reaches_the_earlier_steps():
-    drive(["1", "kimi", "", "", ""])                          # saves a dry run of kimi
-    argv, _ = drive(["1", "2", "b", "b", "gpt56", "", "", ""])
-    # summary -> back -> settings -> back -> effort -> back -> agents: choose gpt56 instead
+    drive(["1", "kimi", "", ""])                              # saves a dry run of kimi
+    argv, _ = drive(["1", "2", "b", "gpt56", "", ""])
+    # summary -> back -> settings -> back -> agents: choose gpt56 instead
     assert argv == ["--agent", "gpt56", "--dry-run"]
 
 
 def test_adding_a_model_from_the_agent_list():
-    it = iter(["1", "add", "1", "qwen/qwen3-coder", "", "", "", ""])
+    it = iter(["1", "add", "1", "qwen/qwen3-coder", "", "", ""])
     lines = []
     w = Wizard(AGENTS, ui=Plain(ask=lambda q: next(it), out=lines.append), check_openrouter=False)
     argv = w.run()
     assert argv == ["--agent", "openrouter-qwen-qwen3-coder", "--dry-run"]
     assert "added qwen/qwen3-coder (openrouter)" in "\n".join(lines)
     # the next start lists it with the paper's arms
-    it = iter(["1", "openrouter-qwen-qwen3-coder", "", "", ""])
+    it = iter(["1", "openrouter-qwen-qwen3-coder", "", ""])
     argv = Wizard(AGENTS, ui=Plain(ask=lambda q: next(it), out=lambda x: None)).run()
     assert argv == ["--agent", "openrouter-qwen-qwen3-coder", "--dry-run"]
 
 
 def test_adding_a_local_model_asks_its_context_window():
-    it = iter(["1", "add", "5", "llama-4", "", "32768", "", "", "", ""])
+    it = iter(["1", "add", "5", "llama-4", "", "32768", "", "", ""])
     lines = []
     w = Wizard(AGENTS, ui=Plain(ask=lambda q: next(it), out=lines.append), check_openrouter=False)
     assert w.run() == ["--agent", "local-llama-4", "--dry-run"]
     assert "ranked apart from the paper" in "\n".join(lines)
+
+
+def test_paper_settings_skip_every_option_and_clear_old_changes():
+    # customize with gpt56 at low and two at a time, then back to the settings and choose the paper's
+    argv, text = drive(["1", "kimi,gpt56", "2", "", "1", "", "", "2", "b", "b", "b", "b", "1", ""])
+    assert argv == ["--agent", "kimi,gpt56", "--dry-run"]
+    assert "Reasoning effort" in text and "not comparable" not in text.split("Summary")[-1]
