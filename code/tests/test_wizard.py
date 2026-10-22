@@ -15,6 +15,8 @@ AGENTS = Path(__file__).resolve().parents[1] / "agents"
 def no_credentials(tmp_path, monkeypatch):
     """Run in an empty folder (no .env) with no credential in the environment."""
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("SCIEXAM_PROFILE", str(tmp_path / "profile.json"))
+    monkeypatch.setenv("SCIEXAM_LEDGER", str(tmp_path / "runs.jsonl"))
     for name in ("OPENROUTER_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "CODEX_AUTH_JSON", "ANTIGRAVITY_HOME"):
         monkeypatch.delenv(name, raising=False)
 
@@ -61,9 +63,10 @@ def test_live_run_asks_for_data_and_never_starts_by_default(tmp_path):
     pdf = tmp_path / "jin1997.pdf"
     pdf.write_bytes(b"%PDF")
     with pytest.raises(Abort):
-        drive(["3", "kimi", "", "", str(data), str(pdf), "3"])
-    argv, text = drive(["3", "kimi", "", "", str(data), str(pdf), "1"])
-    assert argv == ["--agent", "kimi", "--task-data", str(data), "--paper", str(pdf)]
+        drive(["3", "kimi", "", "", str(data), str(pdf), "me@example.org", "3"])
+    argv, text = drive(["3", "kimi", "", "", str(data), str(pdf), "me@example.org", "1"])
+    assert argv == ["--agent", "kimi", "--task-data", str(data), "--paper", str(pdf),
+                    "--contact", "me@example.org"]
     assert "billed" in text
 
 
@@ -97,12 +100,12 @@ def test_a_smoke_setup_is_remembered_and_becomes_the_full_run(tmp_path):
     pdf = tmp_path / "jin1997.pdf"
     pdf.write_bytes(b"%PDF")
     # first start: smoke for kimi and gpt56, gpt56 at low, two at a time
-    argv, _ = drive(["2", "kimi,gpt56", "", "1", "", "2", str(data), str(pdf), "1"])
+    argv, _ = drive(["2", "kimi,gpt56", "", "1", "", "2", str(data), str(pdf), "me@example.org", "1"])
     assert argv[:7] == ["--agent", "kimi,gpt56", "--effort", "gpt56=low", "--parallel", "2", "--smoke"]
     # next start: "full run" goes straight to the summary with every answer kept
     argv, text = drive(["2", "1"])
     assert argv == ["--agent", "kimi,gpt56", "--effort", "gpt56=low", "--parallel", "2",
-                    "--task-data", str(data), "--paper", str(pdf)]
+                    "--task-data", str(data), "--paper", str(pdf), "--contact", "me@example.org"]
     assert "repeat the last setup: smoke, kimi, gpt56" in text
     # "last" repeats it as it was, and "new" asks everything again
     argv, _ = drive(["1", "1"])

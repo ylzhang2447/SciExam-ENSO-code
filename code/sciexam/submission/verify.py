@@ -28,6 +28,7 @@ from pathlib import Path
 
 from ..agent import config as C
 from ..agent import prompts as P
+from ..agent import seal as SEAL
 from . import package as PK
 
 # The protocol of an arm: a new model may change its model, names and scaffold version, not these.
@@ -246,8 +247,21 @@ def check_egress(sub, rep):
 
 
 def regrade(sub, md, data_root, rep, image=None, timeout=3600, in_process=False):
+    """Regrade the final model. Without a stated calendar offset it is graded at 0 and -1, the two
+    conventions the task leaves open, and the maintainers judge which the model uses."""
+    stated = md.get("calendar_offset")
+    if stated is None:
+        out = {}
+        for s in (0.0, -1.0):
+            sc = _regrade_one(sub, md, data_root, rep, s, image, timeout, in_process)
+            out["%+.0f" % s] = sc
+        return out
+    return _regrade_one(sub, md, data_root, rep, float(stated), image, timeout, in_process)
+
+
+def _regrade_one(sub, md, data_root, rep, s, image, timeout, in_process):
     from ..grader import obs as O
-    s = float(md.get("calendar_offset", 0.0))
+    name = "regrade" if md.get("calendar_offset") is not None else "regrade, offset %+.0f" % s
     if in_process:
         import os
         from ..grader.score import LocalModel, grade as grade_fn
@@ -265,16 +279,16 @@ def regrade(sub, md, data_root, rep, image=None, timeout=3600, in_process=False)
                         fallback_scales=Path(data_root) / "task" / "nondim_scales.json")
     scores = {k: r.get(k) for k in ("statistics", "physics", "predictivity", "composite")}
     if r.get("status") != "scored" or scores["composite"] is None:
-        rep.add("regrade", "fail", "the final model did not score: %s" % (r.get("error") or r.get("status")))
+        rep.add(name, "fail", "the final model did not score: %s" % (r.get("error") or r.get("status")))
         return scores
     claimed = md.get("claimed_scores") or {}
     off = {k: (claimed[k], scores[k]) for k in claimed if k in scores
            and abs(float(claimed[k]) - float(scores[k])) > SCORE_TOL}
     if off:
-        rep.add("regrade", "fail", "claimed %s, regraded %s" % (
+        rep.add(name, "fail", "claimed %s, regraded %s" % (
             {k: v[0] for k, v in off.items()}, {k: round(v[1], 4) for k, v in off.items()}))
     else:
-        rep.add("regrade", "pass", "composite %.4f (statistics %.4f, physics %.4f, prediction %.4f) at "
+        rep.add(name, "pass", "composite %.4f (statistics %.4f, physics %.4f, prediction %.4f) at "
                 "calendar offset %+.0f" % (scores["composite"], scores["statistics"], scores["physics"],
                                           scores["predictivity"], s))
     return scores
@@ -288,11 +302,13 @@ def verify(sub, data_root, grade=True, image=None, timeout=3600, in_process=Fals
         md = json.loads((sub / "metadata.json").read_text())
     except (OSError, ValueError):
         md = {}
-    missing = [k for k in ("format", "system_name", "contact", "calendar_offset", "runs_attempted")
-               if k not in md]
+    missing = [k for k in ("format", "system_name", "contact", "runs_attempted") if not md.get(k)]
     rep.add("metadata", "fail" if missing or md.get("format") != PK.FORMAT else "pass",
             "missing %s" % ", ".join(missing) if missing else "%s, %d run(s) attempted"
             % (md.get("system_name"), md.get("runs_attempted", 0)))
+    broken = SEAL.check_submission(sub)
+    rep.add("seal", "fail" if broken else "pass", "; ".join(broken) if broken else
+            "every checkpoint and log matches the seal written when the run ended")
     arm = check_config(sub, rep)
     check_run(sub, arm, rep)
     check_checkpoints(sub, rep)

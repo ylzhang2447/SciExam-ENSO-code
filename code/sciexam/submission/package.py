@@ -2,7 +2,8 @@
 
 A submission folder holds
 
-    metadata.json       who submits, the system, the calendar offset, how many runs were made
+    metadata.json       the system, the contact and how many runs were made, read from the run
+                        itself (run-agent writes them into run_meta.json when the run starts)
     agent.yaml          the arm configuration the run used
     final/              the final checkpoint (the one the leaderboard ranks)
     checkpoints/        every checkpoint, round_NN/
@@ -10,7 +11,8 @@ A submission folder holds
                         agent_output.txt and proxy/egress.jsonl from the run's results folder
     MANIFEST.sha256     sha256 of every other file
 
-Only these files are copied. The agent workspace is never copied: it holds the user's sign-in
+The results folder must still match the seal the run wrote when it ended (agent/seal.py): a
+folder changed after its run is refused. Only these files are copied. The agent workspace is never copied: it holds the user's sign-in
 files (for example the Codex auth.json). Every copied text file is scanned for the user's
 credential values and for common secret patterns, and packaging stops if one is found.
 """
@@ -24,12 +26,13 @@ from pathlib import Path
 import sciexam
 
 from ..agent import config as C
+from ..agent import seal as SEAL
 
 FORMAT = 1
 MODEL_FILES = ("model.py", "params.json", "model_card.md", "nondim_scales.json")
 LOG_FILES = ("run_meta.json", "summary.json", "trajectory.jsonl", "diagnostics_audit.json",
-             "agent_output.txt", "proxy/egress.jsonl")
-REQUIRED_LOGS = ("run_meta.json", "summary.json", "trajectory.jsonl")
+             "agent_output.txt", "proxy/egress.jsonl", "SEAL.json")
+REQUIRED_LOGS = ("run_meta.json", "summary.json", "trajectory.jsonl", "SEAL.json")
 AGENTS_DIR = Path(__file__).resolve().parents[2] / "agents"
 SECRET_PATTERNS = [
     re.compile(r"sk-(or-v1-|ant-)?[A-Za-z0-9_-]{20,}"),       # OpenRouter, Anthropic, OpenAI keys
@@ -101,9 +104,11 @@ def write_manifest(out):
     return len(rows)
 
 
-def package(run_dir, out, system_name, contact, offset, runs_attempted, agent_config=None,
-            env_file=".env", notes=""):
-    """Write the submission folder ``out`` and return its metadata."""
+def package(run_dir, out, system_name=None, contact=None, offset=None, runs_attempted=None,
+            agent_config=None, env_file=".env", notes=""):
+    """Write the submission folder ``out`` and return its metadata. The system name, contact
+    and number of runs come from the run's own records; an argument overrides them. The calendar
+    offset is left for the maintainers to judge from the model unless it is given."""
     res = _results(run_dir)
     out = Path(out)
     if out.exists():
@@ -112,15 +117,30 @@ def package(run_dir, out, system_name, contact, offset, runs_attempted, agent_co
         if not (res / f).exists():
             raise PackageError("%s is missing from %s: package a finished run of sciexam run-agent"
                                % (f, res))
-    if float(offset) != int(float(offset)):
+    if offset is not None and float(offset) != int(float(offset)):
         raise PackageError("the calendar offset must be a whole number of months")
-    if int(runs_attempted) < 1:
-        raise PackageError("--runs-attempted is the number of runs you made with this system, at least 1")
     rounds = _rounds(res / "snapshots")
     if not rounds:
         raise PackageError("no checkpoints in %s" % (res / "snapshots"))
+    broken = SEAL.check(res, rounds)
+    if broken:
+        raise PackageError("the results folder was changed after its run, so it cannot be submitted:\n"
+                           + "\n".join("  " + b for b in broken))
     meta = json.loads((res / "run_meta.json").read_text())
     summary = json.loads((res / "summary.json").read_text())
+    rec = meta.get("submission") or {}
+    system_name = system_name or rec.get("system_name")
+    contact = contact or rec.get("contact")
+    runs_attempted = runs_attempted if runs_attempted is not None else rec.get("runs_attempted")
+    if not system_name:
+        raise PackageError("the run records no system name: pass --system-name")
+    if not contact:
+        raise PackageError("the run records no contact: pass --contact")
+    if runs_attempted is None:
+        raise PackageError("the run records no count of runs (a smoke run, or a run from an older "
+                           "harness): pass --runs-attempted")
+    if int(runs_attempted) < 1:
+        raise PackageError("--runs-attempted is the number of runs you made with this system, at least 1")
     cfg = Path(agent_config) if agent_config else AGENTS_DIR / ("%s.yaml" % meta["arm"])
     if not cfg.exists():
         raise PackageError("no arm configuration %s: pass --agent with the yaml the run used" % cfg)
@@ -166,7 +186,7 @@ def package(run_dir, out, system_name, contact, offset, runs_attempted, agent_co
             "custom": meta.get("custom"),
             "budget_s": meta.get("budget_s"),
             "smoke": meta.get("smoke"),
-            "calendar_offset": float(offset),
+            "calendar_offset": None if offset is None else float(offset),
             "runs_attempted": int(runs_attempted),
             "n_checkpoints": len(rounds),
             "final_round": rounds[-1].name,
