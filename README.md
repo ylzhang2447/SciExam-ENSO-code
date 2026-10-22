@@ -24,6 +24,10 @@ sciexam grade --split final --jobs 5       # regrades the 12 final models and th
 sciexam grade-sample dataset/models/final/claude-fable-5.1 --in-process   # one model, no Docker
 ```
 
+The package needs Python 3.10 or newer. On macOS the built-in `python3` is 3.9, and its old pip
+fails with a message about `setup.py`: create the environment with a newer Python instead, for
+example `python3.12 -m venv .venv` (Homebrew: `brew install python@3.12`).
+
 Rerunning an agent, grading a new run and rerunning the Claude Fable 5.1 condition runs are
 described in `code/README.md`.
 
