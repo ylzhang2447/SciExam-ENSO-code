@@ -17,6 +17,7 @@ def no_credentials(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("SCIEXAM_PROFILE", str(tmp_path / "profile.json"))
     monkeypatch.setenv("SCIEXAM_LEDGER", str(tmp_path / "runs.jsonl"))
+    monkeypatch.setenv("SCIEXAM_AGENTS", str(tmp_path / "agents"))
     for name in ("OPENROUTER_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "CODEX_AUTH_JSON", "ANTIGRAVITY_HOME"):
         monkeypatch.delenv(name, raising=False)
 
@@ -119,3 +120,16 @@ def test_back_from_a_remembered_summary_reaches_the_earlier_steps():
     argv, _ = drive(["1", "2", "b", "b", "gpt56", "", "", ""])
     # summary -> back -> settings -> back -> effort -> back -> agents: choose gpt56 instead
     assert argv == ["--agent", "gpt56", "--dry-run"]
+
+
+def test_adding_a_model_from_the_agent_list():
+    it = iter(["1", "add", "1", "qwen/qwen3-coder", "", "", "", ""])
+    lines = []
+    w = Wizard(AGENTS, ui=Plain(ask=lambda q: next(it), out=lines.append), check_openrouter=False)
+    argv = w.run()
+    assert argv == ["--agent", "openrouter-qwen-qwen3-coder", "--dry-run"]
+    assert "added qwen/qwen3-coder (openrouter)" in "\n".join(lines)
+    # the next start lists it with the paper's arms
+    it = iter(["1", "openrouter-qwen-qwen3-coder", "", "", ""])
+    argv = Wizard(AGENTS, ui=Plain(ask=lambda q: next(it), out=lambda x: None)).run()
+    assert argv == ["--agent", "openrouter-qwen-qwen3-coder", "--dry-run"]

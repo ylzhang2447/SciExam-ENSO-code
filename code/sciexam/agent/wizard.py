@@ -16,6 +16,7 @@ from pathlib import Path
 from . import config as C
 from . import custom as X
 from . import effort as E
+from . import newmodel as NM
 from .tui import Abort, Back, Plain, backend
 
 MODES = [
@@ -37,15 +38,20 @@ NETWORK_CHOICES = [
 
 
 class Wizard:
-    def __init__(self, agents_dir, ui=None):
-        self.agents_dir = Path(agents_dir)
+    def __init__(self, agents_dir=None, ui=None, check_openrouter=True):
+        self.agents_dir = Path(agents_dir) if agents_dir else None
         self.ui = ui or backend()
+        self.check_openrouter = check_openrouter
         self.s = {}
 
     # ---- data -------------------------------------------------------------------------------
     def arms(self):
-        rows = [(p, C.load_arm(p)) for p in sorted(self.agents_dir.glob("*.yaml"))]
-        rows.sort(key=lambda r: (bool(r[1].get("condition")), r[0].stem))
+        """The paper's ranked arms, then the models added with add-model, then the condition runs."""
+        paths = list(self.agents_dir.glob("*.yaml")) if self.agents_dir else []
+        paths += [p for p in NM.all_configs() if p.parent != self.agents_dir]
+        rows = [(p, C.load_arm(p)) for p in paths]
+        rows.sort(key=lambda r: (bool(r[1].get("condition")), r[0].parent != NM.RELEASED_DIR,
+                                 r[0].stem))
         return rows
 
     # ---- steps: each reads and writes self.s, and raises Back to return to the previous one --
@@ -59,14 +65,82 @@ class Wizard:
         rows = self.rows
         opts = []
         for p, arm in rows:
-            tag = "condition run" if arm.get("condition") else arm["route"]["kind"]
+            tag = ("condition run" if arm.get("condition") else
+                   "added" if p.parent != NM.RELEASED_DIR else arm["route"]["kind"])
             opts.append((arm["arm"], "%-20s %-12s %s" % (arm.get("display_name") or "",
                                                           arm["scaffold"]["name"], tag)))
+        opts.append(("+ add a model", "a model the paper did not run, on a paper system's protocol"))
         default = self.s.get("picked_idx", [0])
         idx = self.ui.multiselect("Which agents", opts, default,
-                                  names=[a["arm"] for _, a in rows])
+                                  names=[a["arm"] for _, a in rows] + ["add"])
+        add = len(rows) in idx
+        idx = [i for i in idx if i < len(rows)]
+        if add:
+            chosen = [rows[i][0] for i in idx]
+            try:
+                path = self.add_model()
+            except Back:
+                raise _Again()               # back from adding a model: the agent list again
+            self.rows = rows = self.arms()
+            where = {p: k for k, (p, _) in enumerate(rows)}
+            idx = [where[p] for p in chosen] + [where[path]]
+        if not idx:
+            self.ui.note("choose at least one agent")
+            raise _Again()
         self.s["picked_idx"] = idx
         self.s["picked"] = [rows[i] for i in idx]
+
+    def add_model(self):
+        """Ask for a new model and write its configuration. Returns the path."""
+        routes = list(NM.TEMPLATES)
+        sub, st = 0, {}
+        while True:
+            try:
+                if sub == 0:
+                    self.ui.heading("Add a model")
+                    i = self.ui.select("How is the model reached", [(r, NM.ROUTE_LABELS[r]) for r in routes],
+                                       routes.index(st.get("route", "openrouter")))
+                    st["route"] = routes[i]
+                    sub = 1
+                elif sub == 1:
+                    def check(v):
+                        v = v.strip()
+                        if not v or " " in v:
+                            return "the model id, for example qwen/qwen3-coder"
+                        if st["route"] == "openrouter" and self.check_openrouter:
+                            ok = NM.check_openrouter(v)
+                            if ok is False:
+                                return "OpenRouter lists no model %r (see openrouter.ai/models)" % v
+                        return None
+                    hint = {"openrouter": "e.g. qwen/qwen3-coder", "claude": "e.g. claude-opus-5-5",
+                            "codex": "e.g. gpt-6", "antigravity": "e.g. gemini-3.9-pro-medium",
+                            "local": "the name your server gives the model"}[st["route"]]
+                    st["model"] = self.ui.text("Model id (%s)" % hint, st.get("model", ""), check).strip()
+                    sub = 2 if st["route"] == "local" else 3
+                elif sub == 2:
+                    def check_url(v):
+                        try:
+                            NM.gateway_api_base(v)
+                        except NM.ModelError as e:
+                            return str(e)
+                        return None
+                    st["api_base"] = self.ui.text("Endpoint (OpenAI-compatible, e.g. http://localhost:8000/v1)",
+                                                  st.get("api_base", "http://localhost:8000/v1"), check_url)
+                    sub = 3
+                else:
+                    st["name"] = self.ui.text("Display name on the leaderboard", st.get("name") or st["model"])
+                    try:
+                        path = NM.make(st["route"], st["model"], name=st["name"], api_base=st.get("api_base"))
+                    except NM.ModelError as e:
+                        self.ui.note(str(e))
+                        sub = 1
+                        continue
+                    self.ui.note("added %s (%s), configuration in %s" % (st["name"], st["route"], path))
+                    return path
+            except Back:
+                if sub == 0:
+                    raise
+                sub = {1: 0, 2: 1, 3: 2 if st.get("route") == "local" else 1}[sub]
 
     def step_effort(self):
         self.ui.heading("Reasoning effort")
@@ -281,6 +355,8 @@ class Wizard:
             except Skip:
                 k += 1
                 continue
+            except _Again:
+                continue
             except Back:
                 if not history:
                     continue
@@ -360,10 +436,14 @@ class Skip(Exception):
     """A step that does not apply to this run."""
 
 
-def interactive_argv(agents_dir, env_file=".env"):
+class _Again(Exception):
+    """Ask the same step again."""
+
+
+def interactive_argv(env_file=".env"):
     """Run the setup on this terminal and return the run-agent arguments, or None."""
     try:
-        return Wizard(agents_dir).run(env_file=env_file)
+        return Wizard(NM.RELEASED_DIR).run(env_file=env_file)
     except (Abort, KeyboardInterrupt) as e:
         print("\nnothing started (%s)" % (e or "interrupted"), file=sys.stderr)
         return None

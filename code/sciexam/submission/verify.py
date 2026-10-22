@@ -83,16 +83,15 @@ def check_manifest(sub, rep):
 
 def released_template(arm):
     """The released arm this configuration must follow: the same key if the paper ran it, else
-    the released ranked arm of the same scaffold and route."""
+    the paper's latest run on its route (see agent/newmodel.py), which `add-model` copies."""
+    from ..agent import newmodel as NM
     same = PK.AGENTS_DIR / ("%s.yaml" % arm["arm"])
     if same.exists():
         return C.load_arm(same)
-    for p in sorted(PK.AGENTS_DIR.glob("*.yaml")):
-        t = C.load_arm(p)
-        if (not t.get("condition") and t["scaffold"]["name"] == arm["scaffold"]["name"]
-                and t["route"]["kind"] == arm["route"]["kind"]):
-            return t
-    return None
+    try:
+        return C.load_arm(PK.AGENTS_DIR / ("%s.yaml" % NM.template_for(arm)))
+    except (KeyError, OSError, C.ConfigError):
+        return None
 
 
 def check_config(sub, rep):

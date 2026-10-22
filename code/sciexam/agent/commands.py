@@ -15,6 +15,7 @@ from . import custom as X
 from . import docker_env as D
 from . import effort as E
 from . import ledger as LG
+from . import newmodel as NM
 from . import prompts as P
 from . import task as T
 
@@ -107,6 +108,8 @@ def _credentials(arm, a):
         vals["LITELLM_MASTER_KEY"] = (C.credential("LITELLM_MASTER_KEY", envf)
                                       or "sk-local-" + _secrets.token_hex(16))
         vals["ANTHROPIC_API_KEY"] = vals["LITELLM_MASTER_KEY"]
+        vals.setdefault("OPENROUTER_API_KEY", "")
+        vals["LOCAL_MODEL_API_KEY"] = C.credential("LOCAL_MODEL_API_KEY", envf) or "none"
     return vals, names
 
 
@@ -839,15 +842,29 @@ AGENTS_DIR = Path(__file__).resolve().parents[2] / "agents"
 
 
 def resolve_agents(values):
-    """--agent values (paths or arm keys, comma separated or repeated) to config paths."""
+    """--agent values to config paths: paths, arm keys (released or added with add-model), or
+    route:model (openrouter:qwen/qwen3-coder, claude:..., codex:..., antigravity:...), which adds
+    the model on first use. Comma separated or repeated."""
     out = []
     for v in values or []:
         for item in [x.strip() for x in v.split(",") if x.strip()]:
             p = Path(item)
-            if not p.exists() and not item.endswith(".yaml"):
-                p = AGENTS_DIR / ("%s.yaml" % item)
+            spec = NM.parse_spec(item)
+            if spec and not p.exists():
+                key = NM.slug("%s-%s" % spec)
+                p = NM.user_dir() / ("%s.yaml" % key)
+                if not p.exists():
+                    try:
+                        p = NM.make(spec[0], spec[1])
+                    except NM.ModelError as e:
+                        raise RuntimeError(str(e))
+                    print("added %s as arm %s (%s)" % (spec[1], key, p))
+            elif not p.exists() and not item.endswith(".yaml"):
+                p = next((d / ("%s.yaml" % item) for d in NM.agent_dirs()
+                          if (d / ("%s.yaml" % item)).exists()), p)
             if not p.exists():
-                raise RuntimeError("no arm config %s (see sciexam list-agents)" % item)
+                raise RuntimeError("no arm config %s (see sciexam list-agents, or sciexam add-model)"
+                                   % item)
             out.append(p)
     if not out:
         raise RuntimeError("no agent given")
@@ -873,7 +890,7 @@ def cmd_run_agent(a):
         if not (a.interactive or sys.stdin.isatty()):
             raise RuntimeError("--agent is required (run it on a terminal for the interactive setup)")
         from .wizard import interactive_argv
-        argv = interactive_argv(AGENTS_DIR, env_file=a.env_file)
+        argv = interactive_argv(env_file=a.env_file)
         if argv is None:
             return 1
         from ..cli import main
@@ -975,21 +992,43 @@ def run_batch(a, paths, keys, levels):
 def cmd_list_agents(a):
     """The arms in agents/, their route, the credential each needs and the effort levels."""
     rows = []
-    for p in sorted(AGENTS_DIR.glob("*.yaml")):
+    for p in NM.all_configs():
         arm = C.load_arm(p)
-        cond = (arm.get("condition") or {}).get("name")
+        cond = (arm.get("condition") or {}).get("name") or ("added" if p.parent != NM.RELEASED_DIR else "")
+        cred = C.required_credentials(arm)
         rows.append((arm["arm"], arm.get("display_name") or "", arm["scaffold"]["name"],
-                     arm["route"]["kind"], C.required_credentials(arm)[0][0],
+                     arm["route"]["kind"], cred[0][0] if cred else "(none)",
                      arm["reasoning"]["effort"], "/".join(E.options(arm)), E.mechanism(arm),
                      cond or ""))
     head = ("arm", "system", "scaffold", "route", "credential", "paper", "effort options",
-            "how the level is set", "condition")
+            "how the level is set", "note")
     w = [max(len(str(r[i])) for r in rows + [head]) for i in range(len(head))]
     for r in [head] + rows:
         print("  ".join(str(c).ljust(w[i]) for i, c in enumerate(r)).rstrip())
     print("\nRun several arms with --agent kimi,gpt56 --parallel 2, and choose a level with "
           "--effort high or --effort kimi=high,gpt56=low. A level other than the paper's is "
-          "recorded as not comparable with the paper.")
+          "recorded as not comparable with the paper.\nAdd a model with sciexam add-model, or "
+          "--agent openrouter:<model id> (also claude:, codex:, antigravity:).")
+    return 0
+
+
+def cmd_add_model(a):
+    if a.route == "openrouter" and not a.no_check:
+        ok = NM.check_openrouter(a.model)
+        if ok is False:
+            raise RuntimeError("OpenRouter lists no model %r (see https://openrouter.ai/models), "
+                               "or pass --no-check" % a.model)
+        if ok is None:
+            print("note: could not read OpenRouter's model list, the id is not checked")
+    try:
+        p = NM.make(a.route, a.model, name=a.name, api_base=a.api_base, key=a.key)
+    except NM.ModelError as e:
+        raise RuntimeError(str(e))
+    arm = C.load_arm(p)
+    print("added arm %s: %s on the protocol of %s" % (arm["arm"], arm["route"]["model_id"],
+                                                     NM.TEMPLATES[a.route]))
+    print("configuration: %s" % p)
+    print("check it:  sciexam run-agent --agent %s --dry-run" % arm["arm"])
     return 0
 
 
@@ -1046,6 +1085,18 @@ def register(sub):
     p = sub.add_parser("list-agents", help="list the released arms, the credential each needs and "
                                            "the reasoning effort levels each accepts")
     p.set_defaults(fn=cmd_list_agents)
+
+    p = sub.add_parser("add-model", help="add a model that the paper did not run, on the protocol "
+                                         "of the released arm of its route")
+    p.add_argument("--route", required=True, choices=sorted(NM.TEMPLATES),
+                   help="; ".join("%s: %s" % kv for kv in NM.ROUTE_LABELS.items()))
+    p.add_argument("--model", required=True, help="the model id, e.g. qwen/qwen3-coder")
+    p.add_argument("--name", help="the display name (default: the model id)")
+    p.add_argument("--api-base", help="local route: the OpenAI-compatible endpoint, e.g. "
+                                      "http://localhost:8000/v1")
+    p.add_argument("--key", help="the arm key (default: route-model)")
+    p.add_argument("--no-check", action="store_true", help="do not check the id against OpenRouter")
+    p.set_defaults(fn=cmd_add_model)
 
 
 def argparse_suppress():

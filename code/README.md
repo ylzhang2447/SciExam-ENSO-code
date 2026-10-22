@@ -210,21 +210,31 @@ where the final model would rank next to the released final models and the refer
 The paper graded each released run under its stated convention (`runs.csv` column
 `calendar_offset`).
 
-### Evaluating your own agent
+### Evaluating a model the paper did not run
 
-The twelve files in `agents/` are the configurations of the paper's systems. To evaluate another
-model, copy the configuration closest to it and change only the model:
+```
+sciexam add-model --route openrouter --model qwen/qwen3-coder
+sciexam add-model --route local --model llama-4-70b --api-base http://localhost:8000/v1 --name "Llama 4 70B"
+sciexam run-agent --agent openrouter:qwen/qwen3-coder --dry-run     # adds the model on first use
+```
 
-* a model on OpenRouter: copy `agents/kimi.yaml`, set `arm`, `display_name`, `route.model_alias`,
-  `route.model_id` and `route.provider_order`, and delete `run_id` and `campaign_id`. The
-  scaffold (Claude Code through the LiteLLM gateway), the tool envelope, the context policy and
-  the lifecycle stay those of the paper's gateway systems.
-* a Claude, OpenAI or Google model on its own subscription client: copy `agents/fable51.yaml`,
-  `agents/gpt55.yaml` or `agents/gemini38.yaml` and set `route.model_id`. A newer client version
-  also needs `scaffold.version` and `scaffold.binary_sha256`, which the image build checks.
+`add-model` writes an arm configuration for the new model from the paper's latest run on its route
+and changes only the model, so the run follows the paper's protocol (budget, lifecycle, tool
+envelope, network and context policy) and its submission passes the protocol check. The interactive
+setup offers the same as "+ add a model" at the end of its agent list. Configurations are kept in
+`~/.cache/sciexam/agents` (or `SCIEXAM_AGENTS`), and `list-agents` marks them "added".
 
-`sciexam run-agent --agent your.yaml --dry-run` shows the resulting setup before anything starts.
-Keep the budget, lifecycle and tool envelope unchanged for results comparable with the paper.
+| route | the model is reached through | template |
+|---|---|---|
+| `openrouter` | OpenRouter, via the LiteLLM gateway (`OPENROUTER_API_KEY`). The id is checked against OpenRouter's public model list. No provider is pinned, unlike the paper's runs | DeepSeek V4.1 Flash |
+| `claude` | the Claude Code subscription client | Claude Fable 5.1 |
+| `codex` | the Codex subscription client | GPT-6 Astra |
+| `antigravity` | the Antigravity client | Gemini 3.8 Flash |
+| `local` | any OpenAI-compatible endpoint (vLLM, Ollama, a lab server), via the LiteLLM gateway. An endpoint on this machine is reached as `host.docker.internal`; `LOCAL_MODEL_API_KEY` is passed if the server needs a key | DeepSeek V4.1 Flash |
+
+A model that needs a newer client than the template pins needs `scaffold.version` and
+`scaffold.binary_sha256` updated in its configuration, which the image build checks; that changes
+the protocol, and the submission check then reports it.
 
 ### Interactive setup
 

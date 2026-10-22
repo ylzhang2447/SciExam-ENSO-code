@@ -150,9 +150,9 @@ def test_connection_outside_the_allowlist_fails(tmp_path):
 
 
 def test_new_model_on_a_released_protocol(tmp_path):
-    cfg = (AGENTS / "kimi.yaml").read_text()
-    cfg = cfg.replace("arm: kimi", "arm: newmodel").replace(
-        "model_id: moonshotai/kimi-k3", "model_id: example/new-model")
+    cfg = (AGENTS / "dsflash.yaml").read_text()          # the template add-model uses
+    cfg = cfg.replace("arm: dsflash", "arm: newmodel").replace(
+        "model_id: deepseek/deepseek-v4.1-flash", "model_id: example/new-model")
     (tmp_path / "newmodel.yaml").write_text(cfg)
     arm = C.load_arm(tmp_path / "newmodel.yaml")
     pack(tmp_path, make_run(tmp_path, arm=arm), agent_config=tmp_path / "newmodel.yaml")

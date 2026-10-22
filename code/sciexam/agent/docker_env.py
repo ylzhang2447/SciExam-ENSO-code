@@ -160,11 +160,13 @@ def up_commands(arm, prefix, n, paths, proxy_script):
             ["docker", "run", "-d", "--platform", PLATFORM, "--name", n.gateway] + lab +
             ["--network", n.egress, "--log-driver", "none", "--cap-drop", "ALL",
              "--security-opt", "no-new-privileges",
-             "-e", "OPENROUTER_API_KEY", "-e", "LITELLM_MASTER_KEY",
-             "-v", "%s:/config.yaml:ro" % paths["gateway_config"],
+             "-e", "OPENROUTER_API_KEY", "-e", "LITELLM_MASTER_KEY", "-e", "LOCAL_MODEL_API_KEY"]
+            + (["--add-host", "host.docker.internal:host-gateway"]
+               if arm["route"].get("upstream") == "openai-compatible" else [])
+            + ["-v", "%s:/config.yaml:ro" % paths["gateway_config"],
              gateway_image_tag(arm, prefix), "litellm", "--config", "/config.yaml",
              "--port", str(GATEWAY_PORT)],
-            ("OPENROUTER_API_KEY", "LITELLM_MASTER_KEY")))
+            ("OPENROUTER_API_KEY", "LITELLM_MASTER_KEY", "LOCAL_MODEL_API_KEY")))
         cmds.append(("attach gateway to the internal network",
                      ["docker", "network", "connect", "--alias", GATEWAY_ALIAS, n.internal,
                       n.gateway], ()))
@@ -235,9 +237,27 @@ def run(argv, env_extra=None, check=True, timeout=None, input_bytes=None, quiet=
 
 
 def gateway_config(arm):
-    """LiteLLM config for one gateway arm. The model_name is the alias Claude Code is given."""
+    """LiteLLM config for one gateway arm. The model_name is the alias Claude Code is given.
+    OpenRouter arms pin their providers as the formal runs did (a new model without a pin leaves
+    the choice to OpenRouter); an openai-compatible arm points LiteLLM at its own endpoint."""
     r = arm["route"]
-    order = ", ".join(r["provider_order"])
+    if r.get("upstream") == "openai-compatible":
+        return ("model_list:\n"
+                "  - model_name: %s\n"
+                "    litellm_params:\n"
+                "      model: openai/%s\n"
+                "      api_base: %s\n"
+                "      api_key: os.environ/LOCAL_MODEL_API_KEY\n"
+                "litellm_settings:\n"
+                "  drop_params: true\n"
+                "  telemetry: false\n"
+                "general_settings: {master_key: os.environ/LITELLM_MASTER_KEY}\n"
+                % (r["model_alias"], r["model_id"], r["api_base"]))
+    if r["provider_order"]:
+        provider = "{order: [%s], allow_fallbacks: %s}" % (
+            ", ".join(r["provider_order"]), "true" if r["allow_fallbacks"] else "false")
+    else:
+        provider = "{allow_fallbacks: %s}" % ("true" if r["allow_fallbacks"] else "false")
     return ("model_list:\n"
             "  - model_name: %s\n"
             "    litellm_params:\n"
@@ -245,10 +265,9 @@ def gateway_config(arm):
             "      api_key: os.environ/OPENROUTER_API_KEY\n"
             "      extra_body:\n"
             "        session_id: sciexam-%s\n"
-            "        provider: {order: [%s], allow_fallbacks: %s}\n"
+            "        provider: %s\n"
             "litellm_settings:\n"
             "  drop_params: true\n"
             "  telemetry: false\n"
             "general_settings: {master_key: os.environ/LITELLM_MASTER_KEY}\n"
-            % (r["model_alias"], r["model_id"], r["model_alias"], order,
-               "true" if r["allow_fallbacks"] else "false"))
+            % (r["model_alias"], r["model_id"], r["model_alias"], provider))

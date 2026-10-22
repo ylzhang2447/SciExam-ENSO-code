@@ -164,6 +164,8 @@ CREDENTIALS = {
 
 
 def required_credentials(arm):
+    if arm["route"].get("upstream") == "openai-compatible":
+        return []          # LOCAL_MODEL_API_KEY is optional: many local servers take any key
     if arm["route"]["kind"] == "gateway":
         return CREDENTIALS["gateway"]
     return CREDENTIALS[arm["scaffold"]["name"]]
