@@ -363,7 +363,7 @@ def cmd_grade_run(a):
     return 0 if final["status"] == "scored" else 1
 
 
-COMMAND_PACKAGES = ("ablation", "figures", "prepare", "agent")
+COMMAND_PACKAGES = ("ablation", "figures", "prepare", "agent", "submission")
 
 
 def main(argv=None):

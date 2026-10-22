@@ -308,6 +308,45 @@ Antigravity) are not part of this repository: `environment/agent/Dockerfile` ins
 time from their official sources at a pinned version with a sha256 check, and each user signs in
 with their own account.
 
+## Submitting a run to the leaderboard
+
+```
+sciexam package-run sciexam_runs/kimi-1012-0930 --out my-submission \
+    --system-name "My agent" --contact me@example.org --offset 0 --runs-attempted 1
+sciexam verify-submission my-submission
+```
+
+`package-run` copies from the run folder only what the leaderboard needs: the final checkpoint
+(`final/`), every checkpoint (`checkpoints/round_NN/`), the run records (`logs/`: run_meta.json,
+summary.json, trajectory.jsonl, diagnostics_audit.json, agent_output.txt, proxy/egress.jsonl), the arm
+configuration (`agent.yaml`), `metadata.json` and `MANIFEST.sha256`. It never copies the agent
+workspace, which holds your sign-in files, and it stops without writing anything if a copied file
+contains one of your credential values or a common secret pattern. `--offset` is the calendar
+convention of the model (see [Calendar convention](#calendar-convention)), and `--runs-attempted`
+is how many runs you made with this system: the leaderboard ranks the final checkpoint of the run
+you submit, and states how many were made.
+
+`verify-submission` runs the checks the maintainers run, and prints each as `ok`, `decl` or `FAIL`:
+
+| check | passes when |
+|---|---|
+| manifest | every file matches `MANIFEST.sha256` and none is unlisted |
+| arm configuration | `agent.yaml` follows the protocol of a released arm. A new model may change its model, names and scaffold version, not the budget, lifecycle, tool envelope, network or context policy |
+| prompts | every agent-facing text has the sha256 of this harness |
+| scaffold and model, lifecycle | the run used the configuration in `agent.yaml` and the formal lifecycle (no smoke runs) |
+| budget, network, reasoning effort | the paper's settings, or `decl` when the run recorded a change (`--hours`, `--network`, `--allow-host`, `--effort`) |
+| run completion | the run finished its full eligible budget |
+| checkpoints | one checkpoint per snapshot event, and `final/` is the last one |
+| egress log | every connection went to a host on the allowlist |
+| regrade | the final model scores in the sandbox (and matches `claimed_scores` in `metadata.json`, if given) |
+
+The verdict is `consistent`, `consistent, declared changes` (ranked apart from the paper's
+settings) or `inconsistent`. The run records are written on your own machine, so the checks show
+that a submission is internally consistent and reproduces its score, not that its records were not
+fabricated. A consistent submission is listed as self-reported, with its run records published for
+anyone to inspect, and the maintainers read them before it is listed. Only a run on infrastructure
+the maintainers control is listed as verified.
+
 ## Rerunning the Claude Fable 5.1 condition runs
 
 ```
