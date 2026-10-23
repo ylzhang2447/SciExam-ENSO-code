@@ -211,12 +211,13 @@ class Wizard:
 
     def step_settings(self):
         self.ui.heading("Settings")
+        self.ui.note("Default: the official leaderboard's effort, 6 h run time and network, and as "
+                     "many agents at once as this machine holds, up to %d." % DEFAULT_PARALLEL)
         cur = 1 if self.s.get("custom") else 0
+        # short menu lines, so they fit a narrow window; the note above says the rest
         i = self.ui.select("How do you want to run", [
-            ("default", "the official leaderboard's settings: its reasoning effort, run time (6 h) "
-                        "and network, up to %d agents at a time (as many as this machine holds)"
-                        % DEFAULT_PARALLEL),
-            ("customize", "your own settings: effort, run time, network and agents at a time")], cur)
+            ("default", "official leaderboard settings, up to %d at once" % DEFAULT_PARALLEL),
+            ("customize", "choose effort, run time, network, agents at once")], cur)
         self.s["custom"] = i == 1
         if not self.s["custom"]:
             self.s.update(levels={}, hours=None, network="paper", net_choice="paper", hosts=[],
