@@ -1,6 +1,7 @@
 """`sciexam run-agent`: rerun one ranked arm, or a Claude Fable 5.1 condition run, with the
 released harness. Several arms can run in one call (`--agent a,b --parallel N`), each at a chosen
 reasoning effort (`--effort`). `sciexam list-agents` shows the arms and the levels each accepts."""
+import argparse
 import json
 import os
 import secrets as _secrets
@@ -17,6 +18,7 @@ from . import effort as E
 from . import ledger as LG
 from . import newmodel as NM
 from . import prompts as P
+from . import resources as R
 from . import task as T
 
 PROBE_SCRIPT = r'''
@@ -304,6 +306,12 @@ def dry_run(arm, a, root):
     if (arm.get("preflight") or {}).get("tool_call"):
         print("preflight         one tool-call request through the gateway before the budget starts")
     print("budget            %.0f s eligible%s" % (budget, "  (SMOKE, not comparable)" if a.smoke else ""))
+    h, at_once = R.host(), a.agents_at_once or 1
+    print("compute           each agent capped at %d CPUs and %d GB; Docker here: %s, holds %d at once"
+          % (R.AGENT_CPUS, R.AGENT_MEMORY_GB, "%d CPUs, %.1f GB" % (h["cpus"], h["memory_gb"])
+             if h else "not answering", R.fit(h)))
+    for prob in R.problems(h, at_once, paths["workdir"]):
+        print("                  PROBLEM: " + prob)
     print("lifecycle         " + ", ".join("%s=%s" % kv for kv in L.items()))
     cond = arm.get("condition")
     if cond:
@@ -694,6 +702,10 @@ def live_run(arm, a, root):
     ws = Path(paths["workspace"])
     if ws.exists() and any(ws.iterdir()):
         raise RuntimeError("workspace %s is not empty, use a new --workdir" % ws)
+    host, at_once = R.host(), a.agents_at_once or 1
+    short = R.problems(host, at_once, paths["workdir"])
+    if short:
+        raise RuntimeError("this machine does not meet the run's spec:\n  " + "\n  ".join(short))
     cond = arm.get("condition")
     condition_record = None
     if cond:
@@ -735,6 +747,7 @@ def live_run(arm, a, root):
     ctr = Container(n.agent, lifecycle["agent_uid"])
     os.environ["SCIEXAM_PROVIDER_TZ"] = creds.get("SCIEXAM_PROVIDER_TZ", "UTC")
     sealed_chain = None
+    sampler = None
     try:
         for label, argv, sec in D.up_commands(arm, a.name_prefix, n, paths,
                                               Path(__file__).parent / "egress_proxy.py"):
@@ -767,7 +780,7 @@ def live_run(arm, a, root):
                 "route": arm["route"], "reasoning": arm["reasoning"], "context": arm["context"],
                 "lifecycle": lifecycle, "budget_s": _budget(arm, a), "smoke": a.smoke,
                 "network_allowlist": C.allowlist(arm), "prompt_sha256": P.prompt_digests(),
-                "custom": arm.get("custom"),
+                "custom": arm.get("custom"), "resources": R.record(host, at_once, paths["workdir"]),
                 "task_files": rows, "started_epoch": int(time.time())}
         # What the run's submission needs, fixed now rather than asked after six hours: the
         # leaderboard name, the contact, and (for a full run) how many runs of this system the
@@ -791,7 +804,10 @@ def live_run(arm, a, root):
             (res_dir / "run_meta.json").write_text(json.dumps(meta, indent=2, default=str))
         else:
             (ws / "run_meta.json").write_text(json.dumps(meta, indent=2, default=str))
+        sampler = R.Sampler(n.agent, res_dir).start()
         out = orchestrate(run, agent, _budget(arm, a))
+        sampler.stop()
+        sampler = None
         out["ended_epoch"] = int(time.time())
         (res_dir / "summary.json").write_text(json.dumps(out, indent=2, default=str))
         for f in ("trajectory.jsonl", "run_meta.json", "agent_output.txt"):
@@ -804,6 +820,8 @@ def live_run(arm, a, root):
         sealed_chain = run.seal_chain
         return 0 if out["status"] == "complete" else 1
     finally:
+        if sampler is not None:
+            sampler.stop()
         if not a.keep:
             for label, argv in D.down_commands(n):
                 subprocess.run(argv, capture_output=True)
@@ -993,6 +1011,10 @@ def run_batch(a, paths, keys, levels):
     if a.run_name or a.workdir:
         raise RuntimeError("--run-name and --workdir name one run, use --batch-dir for several arms")
     batch = Path(a.batch_dir or ("sciexam_runs/batch-%s" % time.strftime("%m%d-%H%M%S"))).resolve()
+    if not (a.dry_run or a.net_check):
+        short = R.problems(R.host(), min(max(1, a.parallel), len(paths)), batch)
+        if short:
+            raise RuntimeError("this machine does not meet the runs' spec:\n  " + "\n  ".join(short))
     batch.mkdir(parents=True, exist_ok=True)
     jobs, seen = [], {}
     for p, k in zip(paths, keys):
@@ -1010,6 +1032,7 @@ def run_batch(a, paths, keys, levels):
             argv += ["--workdir", str(batch / name)]
         if level:
             argv += ["--effort", level]
+        argv += ["--agents-at-once", str(min(max(1, a.parallel), len(paths)))]
         for flag in ("smoke", "dry_run", "net_check", "no_build", "keep"):
             if getattr(a, flag):
                 argv.append("--" + flag.replace("_", "-"))
@@ -1128,6 +1151,7 @@ def register(sub):
                         "comparable with the official leaderboard")
     p.add_argument("--contact", help="email or GitHub handle written into the run for its "
                                      "leaderboard submission (remembered after the first use)")
+    p.add_argument("--agents-at-once", type=int, help=argparse.SUPPRESS)   # set by a batch
     p.add_argument("--parallel", type=int, default=1,
                    help="with several arms, how many run at the same time (default 1)")
     p.add_argument("--batch-dir", help="with several arms, the folder of their runs and logs "

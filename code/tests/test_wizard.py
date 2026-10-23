@@ -37,11 +37,14 @@ def files(tmp_path):
     return answers, flags
 
 
-def drive(answers, checks=OK, check_openrouter=True):
+FORMAL_HOST = {"cpus": 16, "memory_gb": 30.81, "docker": "29.7"}
+
+
+def drive(answers, checks=OK, check_openrouter=True, host=FORMAL_HOST):
     it = iter(answers)
     lines = []
     ui = Plain(ask=lambda q: next(it), out=lines.append)
-    w = Wizard(AGENTS, ui=ui, checks=checks, check_openrouter=check_openrouter)
+    w = Wizard(AGENTS, ui=ui, checks=checks, check_openrouter=check_openrouter, host=lambda: host)
     return w.run(), "\n".join(lines)
 
 
@@ -227,3 +230,10 @@ def test_back_on_the_first_question_does_nothing(files):
     argv, text = drive(["b", "", "kimi"] + data + ["1"])
     assert argv == ["--agent", "kimi"] + flags
     assert text.splitlines().count("Settings") == 1 and "this is the first question" in text
+
+
+def test_the_default_runs_only_as_many_at_once_as_the_machine_holds(files):
+    data, flags = files
+    # Docker with 10 CPUs and 24 GB holds two agents of 5 CPUs and 10 GB
+    argv, _ = drive(["", "kimi,gpt56,deepseek"] + data + ["1"], host={"cpus": 10, "memory_gb": 24})
+    assert argv == ["--agent", "kimi,gpt56,deepseek", "--parallel", "2"] + flags

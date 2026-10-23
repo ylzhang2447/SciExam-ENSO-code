@@ -167,8 +167,8 @@ your copy against the one the agents used and places it in a task folder.
 | | grading and regrading | rerunning an agent |
 |---|---|---|
 | software | Python 3.10 or newer, Docker, git | the same, plus your own model credentials (`.env`, see `.env.example`) |
-| CPU and memory | each grading job starts two containers of 2 CPUs, each capped at 4 GB, so plan 4 CPUs and up to 8 GB per job (`--jobs`) | the agent container, an allowlist proxy (256 MB) and, for OpenRouter arms, a LiteLLM gateway. The agent container has no CPU or memory cap. We suggest 2 CPUs and 4 GB per concurrent run, which is a planning figure, not a measured requirement |
-| disk | about 1 GB for the grading image and 20 MB for the dataset | the agent and gateway images of the arms you run, and the run folders |
+| CPU and memory | each grading job starts two containers of 2 CPUs, each capped at 4 GB, so plan 4 CPUs and up to 8 GB per job (`--jobs`) | each agent container is capped at 5 CPUs and 10 GB (see Compute below), so Docker needs 5 CPUs and 10 GB per agent running at once, plus an allowlist proxy (256 MB) and, for OpenRouter arms, a LiteLLM gateway |
+| disk | about 1 GB for the grading image and 20 MB for the dataset | the agent and gateway images of the arms you run, and the run folders: a run checks for 5 GB plus 2 GB per agent free before it starts |
 | network | only to fetch packages and images once | the model endpoint of the arm's route and PyPI, through the allowlist proxy |
 | time | see the table above | 6 h of eligible time per run. Provider pauses are credited, so the wall time can reach 18 h (`max_wall_multiple` 3) |
 | cost | none | every run is billed to, or counted against, your own account |
@@ -182,6 +182,20 @@ records, with about 6 min per model instead of under 1 min, and GPT-6 Astra took
 default 3600 s limit. Pass `--timeout 14400` there. `SCIEXAM_PLATFORM` overrides
 the platform, at the cost of exactness and, for the grading image, of the pinned hashes. Windows
 with WSL 2 and Docker has not been tested.
+
+
+### Compute
+
+The formal runs shared one host of 16 vCPUs and 30 GB among at most three agents at a time, with
+no cap on the agent container. Each agent's share of that host is the spec: every agent container
+runs with `--cpus 5 --memory 10g`, so running several agents at once gives each the same compute on
+any machine. Before a run starts, Docker's CPUs and memory must hold one cap for each agent running
+at once (the formal host holds three, a laptop with 8 CPUs and 16 GB holds one), and the disk of the
+run folders must have room. On Docker Desktop, raise its CPUs and memory in Settings > Resources.
+The interactive setup runs as many agents at once as the machine holds, up to three. During a run
+`results/resources.jsonl` samples the agent container (CPU, memory, processes) and the free disk
+every minute and ends with the count of out-of-memory kills in the container. `run_meta.json`
+records the spec, the host and how many agents ran at once, and the seal covers both.
 
 ## Rerunning the benchmark
 
@@ -377,6 +391,8 @@ contains one of your credential values or a common secret pattern.
 | scaffold and model, lifecycle | the run used the configuration in `agent.yaml` and the formal lifecycle (no smoke runs) |
 | budget, network, reasoning effort | the paper's settings, or `decl` when the run recorded a change (`--hours`, `--network`, `--allow-host`, `--effort`) |
 | run completion | the run finished its full eligible budget |
+| compute | the agent container had the spec's cap (5 CPUs, 10 GB), on a host that held every agent running at once |
+| compute samples | `resources.jsonl` sampled the run throughout, and the disk never came within 1 GB of full. Peak CPU and memory and any out-of-memory kills inside the cap are reported |
 | checkpoints | one checkpoint per snapshot event, and `final/` is the last one |
 | egress log | every connection went to a host on the allowlist |
 | regrade | the final model scores in the sandbox, at the stated calendar offset or at both 0 and -1 (and matches `claimed_scores` in `metadata.json`, if given) |

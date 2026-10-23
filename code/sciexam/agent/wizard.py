@@ -11,7 +11,7 @@ elsewhere.
 """
 import json
 import shlex
-import subprocess
+import shutil
 import sys
 from pathlib import Path
 
@@ -19,15 +19,17 @@ from . import config as C
 from . import custom as X
 from . import effort as E
 from . import newmodel as NM
+from . import resources as R
 from .tui import Abort, Back, Plain, backend
 
 # The last setup that was started, so the next run (the full run after a smoke run, say) can
 # repeat it without answering every question again. Kept next to the run folders.
 SETUP_FILE = Path("sciexam_runs") / "last_setup.json"
+R_RUNS = Path("sciexam_runs")             # where the run folders go, for the disk check
 SAVED_KEYS = ("mode", "levels", "custom", "hours", "network", "net_choice", "hosts", "parallel",
               "task_data", "paper", "contact")
 
-# the leaderboard runs were made two or three agents at a time
+# the leaderboard runs were made two or three agents at a time; fewer when the machine holds fewer
 DEFAULT_PARALLEL = 3
 
 NETWORK_CHOICES = [
@@ -38,12 +40,19 @@ NETWORK_CHOICES = [
 
 
 class Wizard:
-    def __init__(self, agents_dir=None, ui=None, check_openrouter=True, checks=None):
+    def __init__(self, agents_dir=None, ui=None, check_openrouter=True, checks=None, host=None):
         self.agents_dir = Path(agents_dir) if agents_dir else None
         self.ui = ui or backend()
         self.check_openrouter = check_openrouter
         self.checks = checks or setup_checks
+        self._host_fn, self._host = host or R.host, False
         self.s = {}
+
+    def fit(self):
+        """How many agents this machine holds at once (Docker asked once), at least 1."""
+        if self._host is False:
+            self._host = self._host_fn()
+        return max(1, R.fit(self._host))
 
     # ---- data -------------------------------------------------------------------------------
     def arms(self):
@@ -205,7 +214,8 @@ class Wizard:
         cur = 1 if self.s.get("custom") else 0
         i = self.ui.select("How do you want to run", [
             ("default", "the official leaderboard's settings: its reasoning effort, run time (6 h) "
-                        "and network, up to %d agents at a time" % DEFAULT_PARALLEL),
+                        "and network, up to %d agents at a time (as many as this machine holds)"
+                        % DEFAULT_PARALLEL),
             ("customize", "your own settings: effort, run time, network and agents at a time")], cur)
         self.s["custom"] = i == 1
         if not self.s["custom"]:
@@ -258,11 +268,13 @@ class Wizard:
             self.s["parallel"] = 1
             raise Skip()
         if not self.s.get("custom"):
-            self.s["parallel"] = min(n, DEFAULT_PARALLEL)
+            self.s["parallel"] = min(n, DEFAULT_PARALLEL, self.fit())
             raise Skip()
         self.ui.heading("Parallel runs")
+        self.ui.note("Each agent gets %d CPUs and %d GB; this machine holds %d at once."
+                     % (R.AGENT_CPUS, R.AGENT_MEMORY_GB, self.fit()))
         opts = [(str(k), "agent at a time" if k == 1 else "agents at a time") for k in range(1, n + 1)]
-        cur = self.s.get("parallel") or min(n, DEFAULT_PARALLEL)
+        cur = self.s.get("parallel") or min(n, DEFAULT_PARALLEL, self.fit())
         self.s["parallel"] = self.ui.select("How many run at the same time", opts, min(cur, n) - 1) + 1
 
     def step_data(self):
@@ -448,16 +460,23 @@ def setup_checks(s):
     root = Path(DS.default_root())
     have = (root / "task").is_dir()
     out.append(("dataset", have, str(root) if have else "missing: run sciexam download"))
-    try:
-        r = subprocess.run(["docker", "info", "--format", "{{.ServerVersion}}"],
-                           capture_output=True, text=True, timeout=20)
-        ok = r.returncode == 0
-        out.append(("Docker", ok, "engine %s" % r.stdout.strip() if ok else
-                    "not running: start Docker Desktop (or the Docker service)"))
-    except FileNotFoundError:
+    if shutil.which("docker") is None:
         out.append(("Docker", False, "not installed: https://docs.docker.com/get-docker/"))
-    except subprocess.TimeoutExpired:
-        out.append(("Docker", False, "did not answer in 20 s: is Docker starting?"))
+    else:
+        h = R.host()
+        out.append(("Docker", h is not None, "engine %s, %d CPUs, %.1f GB" % (
+            h["docker"], h["cpus"], h["memory_gb"]) if h else
+            "not running: start Docker Desktop (or the Docker service)"))
+        if h is not None:
+            n = s.get("parallel") or 1
+            ok = R.fit(h) >= n
+            out.append(("compute", ok, "%d agent(s) at once, %d CPUs and %d GB each" % (
+                n, R.AGENT_CPUS, R.AGENT_MEMORY_GB) if ok else
+                "holds %d agent(s) at once, not %d: give Docker more CPUs or memory "
+                "(Docker Desktop: Settings > Resources) or run fewer at once" % (R.fit(h), n)))
+    n = s.get("parallel") or 1
+    free, need = R.disk_free_gb(R_RUNS), R.disk_needed_gb(n)
+    out.append(("disk", free >= need, "%.1f GB free, %d GB needed" % (free, need)))
     if have:
         probs = T.plan(root / "task", s.get("task_data"), s.get("paper"))[2]
         out.append(("task data and paper", not probs, "; ".join(probs) or "every file in place"))

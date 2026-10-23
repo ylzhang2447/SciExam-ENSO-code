@@ -24,6 +24,8 @@ import shlex
 import subprocess
 from pathlib import Path
 
+from . import resources as R
+
 # Every image of a run is built and run for linux/amd64: the agent image installs the Linux x64
 # builds of Node.js and the agent CLIs, pinned by sha256. On an arm64 host Docker emulates it.
 PLATFORM = os.environ.get("SCIEXAM_PLATFORM", "linux/amd64")
@@ -172,7 +174,7 @@ def up_commands(arm, prefix, n, paths, proxy_script):
                       n.gateway], ()))
     env = proxy_env(arm)
     argv = (["docker", "run", "-d", "--platform", PLATFORM, "--name", n.agent] + lab
-            + ["--network", n.internal, "--log-driver", "none"])
+            + ["--network", n.internal, "--log-driver", "none"] + R.docker_flags())
     for k, v in env.items():
         argv += ["-e", "%s=%s" % (k, v)]
     argv += ["-v", "%s:%s" % (paths["workspace"], paths["ctr_workspace"]),
