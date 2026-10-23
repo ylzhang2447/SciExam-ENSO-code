@@ -84,10 +84,12 @@ def problems(h, agents, run_dir):
     if h is None:
         return ["Docker does not answer: start Docker Desktop (or the Docker service)"]
     if fit(h) < agents:
+        fix = ("give Docker at least %d CPUs and %d GB" % (AGENT_CPUS, AGENT_MEMORY_GB) if agents == 1
+               else "run at most %d at once, or give Docker more" % fit(h) if fit(h)
+               else "give Docker at least %d CPUs and %d GB" % (AGENT_CPUS, AGENT_MEMORY_GB))
         out.append("Docker has %d CPUs and %.1f GB of memory, and each agent needs %d CPUs and %d GB, "
-                   "so it holds %d agent(s) at once, not %d. Run fewer at once, or give Docker more "
-                   "(Docker Desktop: Settings > Resources)"
-                   % (h["cpus"], h["memory_gb"], AGENT_CPUS, AGENT_MEMORY_GB, fit(h), agents))
+                   "so it holds %d agent(s) at once, not %d: %s (Docker Desktop: Settings > Resources)"
+                   % (h["cpus"], h["memory_gb"], AGENT_CPUS, AGENT_MEMORY_GB, fit(h), agents, fix))
     free, need = disk_free_gb(run_dir), disk_needed_gb(agents)
     if free < need:
         out.append("%.1f GB free on the disk of %s, %d GB needed for %d agent(s)"
