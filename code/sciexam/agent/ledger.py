@@ -54,6 +54,7 @@ def signature(arm, budget_s):
     """What makes two runs the same system."""
     return {"arm": arm["arm"], "model_id": arm["route"]["model_id"],
             "effort": arm["reasoning"]["effort"], "budget_s": float(budget_s),
+            "context": arm["context"]["working_context_tokens"],
             "custom": {k: v for k, v in (arm.get("custom") or {}).items() if k != "comparable_with_paper"}}
 
 
@@ -66,6 +67,9 @@ def system_name(arm, budget_s):
         notes.append("effort %s" % r["effort"])
     if float(budget_s) != float(arm["budget"]["eligible_seconds"]):
         notes.append("%g h" % (float(budget_s) / 3600.0))
+    ctx = (arm.get("declared") or {}).get("context_tokens")
+    if ctx:
+        notes.append("%dk context" % (ctx // 1000))
     c = arm.get("custom") or {}
     if c.get("network"):
         notes.append("no PyPI")
