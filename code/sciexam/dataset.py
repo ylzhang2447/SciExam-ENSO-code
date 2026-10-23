@@ -18,7 +18,8 @@ HF_REVISION = None
 
 
 def default_root():
-    return Path(os.environ.get("SCIEXAM_DATA", Path.home() / ".cache" / "sciexam" / "dataset"))
+    from . import home
+    return Path(os.environ.get("SCIEXAM_DATA") or home.dataset())
 
 
 def sha256_file(path, bufsize=1 << 20):

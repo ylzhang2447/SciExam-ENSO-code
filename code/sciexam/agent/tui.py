@@ -159,6 +159,13 @@ class Plain:
                 return ans
             self.out("  " + err)
 
+    def secret(self, question):
+        """A value that must not be echoed (an API key): read with getpass on a terminal."""
+        if self.ask_fn is input:
+            import getpass
+            return getpass.getpass(question + ": ")
+        return self.ask_fn(question + ": ")
+
     def confirm(self, question, default=False):
         while True:
             ans = self._ask(question + " (y/n)", "y" if default else "n").lower()

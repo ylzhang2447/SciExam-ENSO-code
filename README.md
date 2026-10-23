@@ -14,6 +14,22 @@ the El Nino-Southern Oscillation from raw observations within a six-hour budget.
 | `code/` | the `sciexam` package: grader, regrading, structural ablation, figures, observation rebuild and the agent harness. See `code/README.md` | MIT |
 | `dataset/` | the released records: runs, checkpoints, agent-built models, simplified models, grader observations and task files. See `dataset/README.md` | CC BY 4.0, with third-party terms listed in `dataset/LICENSE.md` |
 
+## New here: run the benchmark in two commands
+
+```
+git clone https://github.com/ylzhang2447/SciExam-ENSO-code.git && sh SciExam-ENSO-code/install.sh
+sciexam start
+```
+
+`install.sh` finds Python 3.10 or newer, asks which folder to keep everything in (default
+`~/sciexam`), says what it will do and waits for your yes. `sciexam start` then checks what a run
+needs (Docker and its CPUs and memory, the dataset, the observations, the reference paper, disk,
+your model account), does what it can after asking (opening Docker Desktop, copying the dataset,
+downloading the observations, saving the key you paste) and says exactly what only you can do
+(installing Docker, changing its memory, downloading the paper from the publisher). When
+everything is ready it opens the run setup. Nothing outside the chosen folder is changed, except
+a link to the `sciexam` command and one PATH line, each asked for. To uninstall, delete the folder.
+
 ## Quickstart
 
 ```

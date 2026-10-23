@@ -16,7 +16,8 @@ from pathlib import Path
 
 
 def _home():
-    return Path.home() / ".cache" / "sciexam"
+    from .. import home
+    return home.state()
 
 
 def ledger_path():
