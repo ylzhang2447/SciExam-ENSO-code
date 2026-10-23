@@ -165,7 +165,7 @@ class Start:
             if src:
                 return (["The released dataset (task files, grader observations, checkpoints) comes "
                          "with the code."], ("copy it from %s and check every file (seconds)" % src,
-                                             lambda: self.sys.copy_dataset(src)))
+                                             lambda: self._copy_dataset(src)))
             return (["The dataset comes with the code checkout (its dataset/ folder), and none was "
                      "found next to this install.", "Reinstall with install.sh, or run "
                      "sciexam download --local /path/to/dataset, then choose check again."], None)
@@ -173,7 +173,7 @@ class Start:
             return (["The agents receive four observation files (sea surface temperature, ocean "
                      "temperature and currents, wind), rebuilt from NOAA's public servers."],
                     ("download them now (about 330 MB, a few minutes) into %s" % H.prepared(),
-                     lambda: self.sys.prepare(H.prepared())))
+                     self._prepare))
         if title == "reference paper":
             from ..prepare import paper as P
             return (["The agents read one paper, which we may not redistribute:",
@@ -185,6 +185,20 @@ class Start:
             return (["Free some disk space where the runs are kept (%s), then choose check again."
                      % H.runs().resolve()], None)
         return ([], None)
+
+    def _copy_dataset(self, src):
+        self.ui.note("copying the dataset and checking the sha256 of every file...")
+        t0 = time.time()
+        self.sys.copy_dataset(src)
+        self.ui.note("done in %.0f s" % (time.time() - t0))
+
+    def _prepare(self):
+        self.ui.note("downloading from NOAA and rebuilding; its progress follows (Ctrl-C stops it, "
+                     "and the next start resumes from the checklist)")
+        rc = self.sys.prepare(H.prepared())
+        if rc != 0:
+            self.ui.note("the download or rebuild did not finish (exit %s): see the messages above, "
+                         "then choose do it to try again" % rc)
 
     def _open_docker(self):
         if not self.sys.open_docker():
