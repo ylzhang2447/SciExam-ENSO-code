@@ -111,6 +111,7 @@ class Start:
         self.sys = system or System()
         self.env_file = env_file or H.env_file()
         self.wizard_opts = wizard_opts or {}
+        self.last = None          # what the last step did, shown on the next page
 
     # ---- the checklist: (title, ok, detail), then what to do about it ------------------------
     def items(self):
@@ -189,27 +190,38 @@ class Start:
     def _copy_dataset(self, src):
         self.ui.note("copying the dataset and checking the sha256 of every file...")
         t0 = time.time()
-        self.sys.copy_dataset(src)
-        self.ui.note("done in %.0f s" % (time.time() - t0))
+        try:
+            self.sys.copy_dataset(src)
+        except Exception as e:            # a damaged or partial checkout
+            self.ui.note("the copy failed: %s" % e)
+            return False
+        self.last = "dataset copied and checked in %.0f s" % (time.time() - t0)
+        return True
 
     def _prepare(self):
         self.ui.note("downloading from NOAA and rebuilding; its progress follows (Ctrl-C stops it, "
                      "and the next start resumes from the checklist)")
         rc = self.sys.prepare(H.prepared())
         if rc != 0:
-            self.ui.note("the download or rebuild did not finish (exit %s): see the messages above, "
-                         "then choose do it to try again" % rc)
+            self.ui.note("the download or rebuild did not finish (exit %s): see the messages above. "
+                         "Choose do it to try again." % rc)
+            return False
+        self.last = "raw data downloaded and rebuilt"
+        return True
 
     def _open_docker(self):
         if not self.sys.open_docker():
             self.ui.note("could not open Docker Desktop: open it from Applications")
-            return
+            return False
         self.ui.note("waiting for Docker to start...")
         for _ in range(24):
             if self.sys.host() is not None:
-                return
+                self.last = "Docker Desktop started"
+                return True
             self.sys.sleep(5)
-        self.ui.note("Docker has not answered yet. Wait until its whale icon stops moving.")
+        self.ui.note("Docker has not answered yet. Wait until its whale icon stops moving, then "
+                     "choose check again.")
+        return False
 
     def _add_paper(self):
         src = dropped_path(self.ui.text("Drag the PDF here (or type its path), then press Enter", ""))
@@ -219,12 +231,22 @@ class Start:
             self.ui.note(ln)
         if rc == 1 and self.ui.confirm("Use this PDF anyway (the same article, another rendering)?"):
             rc = self.sys.install_paper(src, True, self.ui.note)
+        if rc == 0:
+            self.last = "reference paper added"
+        return rc == 0
 
     # ---- the flow ---------------------------------------------------------------------------
     def show(self, rows):
+        self.ui.page()
+        if H.home():
+            self.ui.note("Everything is kept in %s" % H.home())
         self.ui.heading("Your setup")
         for title, ok, detail in rows:
             self.ui.note("%s %-24s %s" % ("✓" if ok else "✗", title, detail))
+        if self.last:
+            self.ui.note("")
+            self.ui.note("Last step: " + self.last)
+            self.last = None
 
     def checklist(self):
         """Loop until every item is ready. Returns False when the user leaves."""
@@ -249,13 +271,18 @@ class Start:
             choice = opts[i][0]
             if choice == "leave":
                 return False
-            if choice == "do it":
-                action[1]()
+            if choice == "do it" and action[1]() is False:
+                # keep what went wrong on the screen until it has been read
+                self.ui.text("Press Enter to go back to the checklist", "")
 
     def credentials(self):
         """Show which model families have credentials and add one if asked. Never prints a value."""
         while True:
             vals = C.read_env_file(self.env_file)
+            self.ui.page()
+            if self.last:
+                self.ui.note("Last step: " + self.last)
+                self.last = None
             self.ui.heading("Model accounts")
             have = 0
             for key, name, runs, _ in PROVIDERS:
@@ -290,16 +317,15 @@ class Start:
                 if not v:
                     continue
             write_env(self.env_file, name, v)
-            self.ui.note("saved to %s (readable only by you)" % self.env_file)
+            self.last = "%s saved to %s (readable only by you)" % (key, self.env_file)
 
     def run(self):
         self.ui.banner("Get ready for a run. Each step says what it will do before doing it.")
-        if H.home():
-            self.ui.note("Everything is kept in %s" % H.home())
         if not self.checklist():
             raise Abort("left the checklist, run sciexam start again any time")
         if not self.credentials():
             raise Abort("left before the run setup, run sciexam start again any time")
+        self.ui.page()
         self.ui.heading("Ready")
         self.ui.note("Everything a run needs is in place. Next: choose the models and how to run.")
         from .wizard import Wizard

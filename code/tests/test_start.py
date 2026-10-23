@@ -128,3 +128,16 @@ def test_write_env_keeps_other_lines(tmp_path):
     S.write_env(f, "OPENROUTER_API_KEY", "new")
     assert f.read_text() == "# mine\nCLAUDE_CODE_OAUTH_TOKEN=abc\nOPENROUTER_API_KEY=new\n"
     assert stat.S_IMODE(os.stat(f).st_mode) == 0o600
+
+
+def test_a_failed_step_waits_and_the_next_page_says_what_happened():
+    class Offline(Machine):
+        def prepare(self, out):
+            return 1                              # NOAA unreachable
+    lines = []
+    it = iter(["1", "1", "1", "", "3"])          # open Docker, copy, download (fails), Enter, leave
+    with pytest.raises(Abort):
+        S.Start(ui=Plain(ask=lambda q: next(it), out=lines.append), system=Offline()).run()
+    text = "\n".join(lines)
+    assert "Last step: Docker Desktop started" in text and "Last step: dataset copied" in text
+    assert "did not finish (exit 1)" in text and text.count("Next: raw data") == 2

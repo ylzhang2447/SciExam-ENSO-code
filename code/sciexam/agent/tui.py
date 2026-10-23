@@ -159,6 +159,10 @@ class Plain:
                 return ans
             self.out("  " + err)
 
+    def page(self):
+        """Start a new page: numbered prompts just go on below."""
+        self.out("")
+
     def secret(self, question):
         """A value that must not be echoed (an API key): read with getpass on a terminal."""
         if self.ask_fn is input:
@@ -257,6 +261,15 @@ class Keys(Plain):
         self.w.write("\n  " + BOLD + "SciExam for ENSO" + RESET + DIM + "   Can AI agents build climate models?" + RESET + "\n")
         self.w.write("  " + DIM + subtitle + RESET + "\n")
         self.w.write("  " + DIM + "Arrow keys to move, Enter to choose, left or b to go back, q to quit." + RESET + "\n")
+
+    def page(self):
+        """Start a new page: clear the screen and draw the banner again, so that a checklist shown
+        after each step replaces the last one instead of piling up below it."""
+        self.w.write("\033[H\033[2J")
+        if self._subtitle is not None:
+            self._banner()
+        self._step = []
+        self.w.flush()
 
     def heading(self, text):
         self._step = ["", ORANGE + BOLD + text + RESET]
