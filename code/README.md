@@ -262,20 +262,21 @@ sciexam run-agent
 ```
 
 Without `--agent`, on a terminal, `run-agent` asks for the run one step at a time instead of taking
-flags: the mode (smoke run or full run), the agents, the settings, and the task data and paper.
-The default settings are those of the official leaderboard (its reasoning effort, run time and
-network, up to 3 agents at a time); customize asks for the reasoning effort of each agent, the run
-time, the network and how many agents run at once. Before it offers to start, it runs the checks of
+flags: how to run, the agents, and the task data and paper. How to run is default, the official
+leaderboard's settings (its reasoning effort, run time and network, up to 3 agents at a time), or
+customize, which asks for the reasoning effort of each agent, the run time, the network and how
+many agents run at once. Before it offers to start, it runs the checks of
 `--dry-run` (the dataset, Docker, the task data and paper) and shows which credentials are set
 (never their values), then a summary and the equivalent command line for scripts. It starts only
-when you choose start; the default is to go back. Arrow keys move, Enter chooses, Space ticks agents, the left
+when you choose the full run, or a 15-minute smoke run of the same setup; the default is to go
+back. Arrow keys move, Enter chooses, Space ticks agents, the left
 arrow or `b` goes back a step and `q` quits. On a terminal without raw key input, or with
 `NO_COLOR` or `SCIEXAM_PLAIN` set, the same questions are numbered prompts.
 
 The setup that was started is saved to `sciexam_runs/last_setup.json`. The next start offers to
-repeat it, to run it as the full run (after a smoke run), or to start new, which keeps the data paths
-and the contact. A remembered
-setup opens at the summary, with every earlier step one step back and its answers kept.
+repeat it, or to start new, which keeps the data paths and the contact. A repeated setup opens at
+the summary, with every earlier step one step back and its answers kept, so the full run follows a
+smoke run in two keys.
 
 Custom settings map to these flags, each recorded as not comparable with the official leaderboard:
 

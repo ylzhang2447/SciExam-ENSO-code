@@ -45,36 +45,38 @@ def drive(answers, checks=OK, check_openrouter=True):
     return w.run(), "\n".join(lines)
 
 
-def test_defaults_give_a_smoke_run_of_the_first_arm(files):
+def test_defaults_give_the_full_run_of_the_first_arm(files):
     data, flags = files
-    argv, text = drive(["", "", ""] + data + ["1"])
+    argv, text = drive(["", ""] + data + ["1"])
+    assert argv == ["--agent", "deepseek"] + flags
+    assert "MISSING" in text and "Checks" in text
+    argv, _ = drive(["1", "2"])                  # the last setup again, as a smoke run this time
     assert argv == ["--agent", "deepseek", "--smoke"] + flags
-    assert "Credentials" not in text and "MISSING" in text and "Checks" in text
 
 
 def test_the_checks_run_before_start_and_never_start_by_default(files):
     data, flags = files
     bad = lambda s: [("Docker", False, "not running: start Docker Desktop")]
     with pytest.raises(Abort):
-        drive(["2", "kimi", ""] + data + ["3"], checks=bad)
+        drive(["", "kimi"] + data + ["4"], checks=bad)
     with pytest.raises(StopIteration):          # the default answer is back, not start
-        drive(["2", "kimi", ""] + data + [""], checks=bad)
-    argv, text = drive(["2", "kimi", ""] + data + ["1"], checks=bad)
+        drive(["", "kimi"] + data + [""], checks=bad)
+    argv, text = drive(["", "kimi"] + data + ["1"], checks=bad)
     assert argv == ["--agent", "kimi"] + flags
     assert "PROBLEM" in text and "Fix these first" in text and "Docker" in text and "billed" in text
 
 
 def test_two_arms_with_a_changed_effort_and_parallel(files):
     data, flags = files
-    argv, text = drive(["2", "kimi,gpt56", "2", "", "1", "", "", ""] + data + ["1"])
+    argv, text = drive(["2", "kimi,gpt56", "", "1", "", "", "2"] + data + ["1"])
     assert argv == ["--agent", "kimi,gpt56", "--effort", "gpt56=low", "--parallel", "2"] + flags
     assert "changed from medium" in text
 
 
 def test_going_back_and_custom_settings(files):
     data, flags = files
-    argv, text = drive(["2", "kimi", "b",              # back from the settings to the agents
-                        "gpt56", "2", "",              # gpt56, customize, at its leaderboard level
+    argv, text = drive(["2", "kimi", "b",              # customize, kimi, back from its effort
+                        "gpt56", "",                   # gpt56 at its leaderboard level
                         "2", "3", "b", "b",            # 2 h, extra hosts, then back twice to the hours
                         "3", "3", "data.example.org",  # 3 h, extra hosts, one host
                         ] + data + ["1"])
@@ -83,18 +85,18 @@ def test_going_back_and_custom_settings(files):
 
 
 def test_back_from_the_summary_changes_the_settings(files):
-    # customize: 6 h and no PyPI, then back from the summary to the settings and choose the default
+    # customize: 6 h and no PyPI, then back from the summary to the first question, choose the default
     data, flags = files
-    argv, text = drive(["2", "kimi", "2", "", "6", "2"] + data +
-                       ["2", "b", "b", "b", "1", "", "", "", "1"])
-    # summary -> back -> data -> back -> run time -> back -> effort -> back -> settings
+    argv, text = drive(["2", "kimi", "", "6", "2"] + data +
+                       ["3", "b", "b", "b", "b", "1", "", "", "", "", "1"])
+    # summary -> data -> run time -> effort -> agents -> settings
     assert "--network" not in argv and "model endpoint only" in text
     assert argv == ["--agent", "kimi"] + flags
 
 
 def test_bad_answers_are_asked_again(files):
     data, flags = files
-    argv, _ = drive(["9", "2", "nope", "kimi", "7", "2", "2", "", ""] + data + ["1"])
+    argv, _ = drive(["9", "2", "nope", "kimi", "7", "2", "", ""] + data + ["1"])
     assert argv == ["--agent", "kimi", "--effort", "kimi=medium"] + flags
 
 
@@ -119,59 +121,56 @@ def test_network_overrides():
 
 def test_a_smoke_setup_is_remembered_and_becomes_the_full_run(files):
     data, flags = files
-    # first start: smoke for kimi and gpt56, gpt56 at low, two at a time
-    argv, _ = drive(["1", "kimi,gpt56", "2", "", "1", "", "", ""] + data + ["1"])
+    # first start: a smoke run of kimi and gpt56, gpt56 at low, two at a time
+    argv, _ = drive(["2", "kimi,gpt56", "", "1", "", "", "2"] + data + ["2"])
     assert argv == ["--agent", "kimi,gpt56", "--effort", "gpt56=low", "--parallel", "2", "--smoke"] + flags
-    # next start: "full run" goes straight to the summary with every answer kept
-    argv, text = drive(["2", "1"])
+    # next start: the last setup goes straight to the summary, where full starts the full run
+    argv, text = drive(["1", "1"])
     assert argv == ["--agent", "kimi,gpt56", "--effort", "gpt56=low", "--parallel", "2"] + flags
-    assert "repeat the last setup: smoke, kimi, gpt56" in text
-    # "last" repeats it as it was, and "new" asks everything again
-    argv, _ = drive(["1", "1"])
-    assert "--smoke" not in argv and argv[:2] == ["--agent", "kimi,gpt56"]   # the last start was the full run
-    argv, _ = drive(["2", "", "", "", "", "", "", "1"])  # after a full run the choices are last and new
-    assert argv == ["--agent", "deepseek", "--smoke"] + flags
+    assert "repeat the last setup (smoke): kimi, gpt56, customized settings" in text
+    # "new" asks everything again but keeps the data paths and the contact
+    argv, _ = drive(["2", "", "", "", "", "", "1"])
+    assert argv == ["--agent", "deepseek"] + flags
 
 
 def test_back_from_a_remembered_summary_reaches_the_earlier_steps(files):
     data, flags = files
-    drive(["2", "kimi", ""] + data + ["1"])                   # saves a full run of kimi
-    argv, _ = drive(["1", "2", "b", "b", "gpt56", "", "", "", "", "1"])
-    # summary -> back -> data -> back -> settings -> back -> agents: choose gpt56 instead
+    drive(["", "kimi"] + data + ["1"])                        # saves a full run of kimi
+    argv, _ = drive(["1", "3", "b", "gpt56", "", "", "", "1"])
+    # summary -> back -> data -> back -> agents: choose gpt56 instead
     assert argv == ["--agent", "gpt56"] + flags
 
 
 def test_adding_a_model_from_the_agent_list(files):
     data, flags = files
-    argv, text = drive(["2", "add", "1", "qwen/qwen3-coder", "", ""] + data + ["1"],
-                       check_openrouter=False)
+    argv, text = drive(["", "add", "1", "qwen/qwen3-coder", ""] + data + ["1"], check_openrouter=False)
     assert argv == ["--agent", "openrouter-qwen-qwen3-coder"] + flags
     assert "added qwen/qwen3-coder (openrouter)" in text
     # the next start lists it with the leaderboard's arms
-    argv, _ = drive(["2", "2", "openrouter-qwen-qwen3-coder", "", "", "", "", "1"])
+    argv, _ = drive(["2", "", "openrouter-qwen-qwen3-coder", "", "", "", "1"])
     assert argv == ["--agent", "openrouter-qwen-qwen3-coder"] + flags
 
 
 def test_adding_a_local_model_asks_its_context_window(files):
     data, flags = files
-    argv, text = drive(["2", "add", "5", "llama-4", "", "32768", "", ""] + data + ["1"],
+    argv, text = drive(["", "add", "5", "llama-4", "", "32768", ""] + data + ["1"],
                        check_openrouter=False)
     assert argv == ["--agent", "local-llama-4"] + flags
     assert "ranked apart from the official leaderboard" in text
 
 
 def test_default_settings_skip_every_option_and_clear_old_changes(files):
-    # customize with gpt56 at low and one at a time, then back to the settings and choose the default
+    # customize with gpt56 at low and one at a time, then back to the first question, choose default
     data, flags = files
-    argv, text = drive(["2", "kimi,gpt56", "2", "", "1", "", "", "1"] + data +
-                       ["2", "b", "b", "b", "b", "1", "", "", "", "1"])
+    argv, text = drive(["2", "kimi,gpt56", "", "1", "", "", "1"] + data +
+                       ["3", "b", "b", "b", "b", "b", "1", "", "", "", "", "1"])
     assert argv == ["--agent", "kimi,gpt56", "--parallel", "2"] + flags
     assert "Reasoning effort" in text and "not comparable" not in text.split("Summary")[-1]
 
 
 def test_default_settings_run_up_to_three_at_a_time(files):
     data, flags = files
-    argv, _ = drive(["2", "kimi,gpt56,deepseek,glm52", ""] + data + ["1"])
+    argv, _ = drive(["", "kimi,gpt56,deepseek,glm52"] + data + ["1"])
     assert argv == ["--agent", "kimi,gpt56,deepseek,glm52", "--parallel", "3"] + flags
 
 
@@ -225,6 +224,6 @@ def test_a_resized_terminal_gets_a_clean_redraw(monkeypatch):
 
 def test_back_on_the_first_question_does_nothing(files):
     data, flags = files
-    argv, text = drive(["b", "2", "kimi", ""] + data + ["1"])
+    argv, text = drive(["b", "", "kimi"] + data + ["1"])
     assert argv == ["--agent", "kimi"] + flags
-    assert text.splitlines().count("Mode") == 1 and "this is the first question" in text
+    assert text.splitlines().count("Settings") == 1 and "this is the first question" in text

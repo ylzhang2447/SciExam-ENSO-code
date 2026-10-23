@@ -1,11 +1,11 @@
 """Interactive setup of `sciexam run-agent`.
 
 `sciexam run-agent` without --agent, on a terminal, shows the logo and asks for the run one step
-at a time: the mode (a smoke run or the full run), the agents, the settings (the official
-leaderboard's, or customized effort, run time, network and parallel runs), and the task data and
-paper. Before it offers to start it checks what a run needs (the dataset, Docker, the task data
+at a time: how to run (the official leaderboard's settings, or customized effort, run time,
+network and parallel runs), the agents, and the task data and paper. Before it offers to start it checks what a run needs (the dataset, Docker, the task data
 and paper, the credentials: set or missing, never their values), shows a summary and the
-equivalent command line, and starts only when asked to. Every step can go back to the
+equivalent command line, and starts only when asked to: the full run, or a 15-minute smoke run
+of the same setup first. Every step can go back to the
 one before it. The prompts come from `tui`: arrow-key menus on a terminal, numbered choices
 elsewhere.
 """
@@ -21,12 +21,8 @@ from . import effort as E
 from . import newmodel as NM
 from .tui import Abort, Back, Plain, backend
 
-MODES = [
-    ("smoke", "15-minute check of containers, credentials and network. Uses your account"),
-    ("full", "the benchmark run, 6 h per agent by default. Uses your account"),
-]
-# The last setup that was started, so the next run can repeat it, or turn a smoke run into the
-# full run without answering every question again. Kept next to the run folders.
+# The last setup that was started, so the next run (the full run after a smoke run, say) can
+# repeat it without answering every question again. Kept next to the run folders.
 SETUP_FILE = Path("sciexam_runs") / "last_setup.json"
 SAVED_KEYS = ("mode", "levels", "custom", "hours", "network", "net_choice", "hosts", "parallel",
               "task_data", "paper", "contact")
@@ -60,11 +56,6 @@ class Wizard:
         return rows
 
     # ---- steps: each reads and writes self.s, and raises Back to return to the previous one --
-    def step_mode(self):
-        self.ui.heading("Mode")
-        self.s["mode"] = MODES[self.ui.select("How do you want to run", MODES,
-                                              [m[0] for m in MODES].index(self.s.get("mode", "smoke")))][0]
-
     def step_agents(self):
         self.ui.heading("Agents")
         rows = self.rows
@@ -193,12 +184,10 @@ class Wizard:
         if not saved:
             raise Skip()
         self.ui.heading("Start from")
-        desc = "%s, %s, %s" % (saved["mode"], ", ".join(saved["agents"]),
-                               "custom settings" if saved.get("custom") else "default settings")
-        opts = [("last", "repeat the last setup: " + desc)]
-        if saved["mode"] != "full":
-            opts.append(("full run", "the last setup as the full benchmark run"))
-        opts.append(("new", "answer every question again"))
+        desc = "%s, %s" % (", ".join(saved["agents"]),
+                           "customized settings" if saved.get("custom") else "default settings")
+        opts = [("last", "repeat the last setup (%s): %s" % (saved.get("mode", "full"), desc)),
+                ("new", "answer every question again")]
         i = self.ui.select("Use the last setup", opts, 0)
         choice = opts[i][0]
         # the data paths and the contact belong to this machine, not to the run: kept as defaults
@@ -209,24 +198,19 @@ class Wizard:
             idx = [names.index(k) for k in saved["agents"]]      # in the order they were chosen
             self.s["picked_idx"] = idx
             self.s["picked"] = [self.rows[n] for n in idx]
-            if choice == "full run":
-                self.s["mode"] = "full"
             self.jump = True
 
     def step_settings(self):
         self.ui.heading("Settings")
-        if self.s["mode"] == "smoke":
-            self.ui.note("A smoke run checks the network you will use for the full run, so it takes "
-                         "these settings too. Its run time is fixed at 15 minutes.")
         cur = 1 if self.s.get("custom") else 0
-        i = self.ui.select("Run settings", [
-            ("default", "as on the official leaderboard: its reasoning effort, run time (6 h) and "
-                        "network, up to %d agents at a time" % DEFAULT_PARALLEL),
-            ("customize", "choose the effort, run time, network and how many agents run at once")], cur)
+        i = self.ui.select("How do you want to run", [
+            ("default", "the official leaderboard's settings: its reasoning effort, run time (6 h) "
+                        "and network, up to %d agents at a time" % DEFAULT_PARALLEL),
+            ("customize", "your own settings: effort, run time, network and agents at a time")], cur)
         self.s["custom"] = i == 1
         if not self.s["custom"]:
             self.s.update(levels={}, hours=None, network="paper", net_choice="paper", hosts=[],
-                          parallel=min(len(self.s["picked"]), DEFAULT_PARALLEL))
+                          parallel=None)
 
     def step_runtime(self):
         if not self.s.get("custom"):
@@ -236,18 +220,14 @@ class Wizard:
         while True:
             try:
                 if sub == 0:
-                    if self.s["mode"] == "smoke":
-                        self.ui.note("A smoke run lasts 15 minutes, so its run time is fixed.")
-                        self.s["hours"] = None
-                    else:
-                        def check(v):
-                            try:
-                                return None if 0 < float(v) <= 48 else "a number of hours from 0 to 48"
-                            except ValueError:
-                                return "a number of hours, for example 2 or 0.5"
-                        h = self.ui.text("Run time per agent in hours (leaderboard: 6)",
-                                         str(self.s.get("hours") or 6), check)
-                        self.s["hours"] = None if float(h) == 6 else float(h)
+                    def check(v):
+                        try:
+                            return None if 0 < float(v) <= 48 else "a number of hours from 0 to 48"
+                        except ValueError:
+                            return "a number of hours, for example 2 or 0.5"
+                    h = self.ui.text("Run time per agent in hours (leaderboard: 6; a smoke run "
+                                     "always lasts 15 minutes)", str(self.s.get("hours") or 6), check)
+                    self.s["hours"] = None if float(h) == 6 else float(h)
                     sub = 1
                 elif sub == 1:
                     cur = [n for n, _ in NETWORK_CHOICES].index(self.s.get("net_choice", "paper"))
@@ -268,7 +248,7 @@ class Wizard:
                     self.s["hosts"] = X.hosts_from([v])
                     return
             except Back:
-                if sub == 0 or (sub == 1 and self.s["mode"] == "smoke"):
+                if sub == 0:
                     raise
                 sub -= 1
 
@@ -278,6 +258,7 @@ class Wizard:
             self.s["parallel"] = 1
             raise Skip()
         if not self.s.get("custom"):
+            self.s["parallel"] = min(n, DEFAULT_PARALLEL)
             raise Skip()
         self.ui.heading("Parallel runs")
         opts = [(str(k), "agent at a time" if k == 1 else "agents at a time") for k in range(1, n + 1)]
@@ -330,9 +311,9 @@ class Wizard:
             if not ok:
                 problems.append(name)
 
+        s["mode"] = "full"
         argv = self.command()
         self.ui.heading("Summary")
-        self.ui.note("mode      %s" % s["mode"])
         for _, arm in s["picked"]:
             lv = s["levels"].get(arm["arm"], arm["reasoning"]["effort"])
             ch = "  (changed from %s)" % arm["reasoning"]["effort"] if arm["arm"] in s["levels"] else ""
@@ -348,20 +329,24 @@ class Wizard:
         if s["levels"] or s.get("hours") or s.get("network", "paper") != "paper" or s.get("hosts"):
             self.ui.note("Changed settings are recorded as not comparable with the official leaderboard.")
         self.ui.note("")
-        self.ui.note("The same run from the command line:")
+        self.ui.note("The same run from the command line (add --smoke for the smoke run):")
         self.ui.note("  " + " ".join(shlex.quote(x) for x in argv))
         self.ui.note("")
-        self.ui.note("This run uses your model account and is billed or counted against it.")
+        self.ui.note("Both runs use your model account and are billed or counted against it.")
         if problems:
             self.ui.note("Fix these first, the run would stop at the start: %s" % ", ".join(problems))
-        i = self.ui.select("Ready", [("start", "start the run now"),
-                                     ("back", "go back and change something"),
-                                     ("quit", "leave without starting")], 1)
-        if i == 1:
-            raise Back()
+        i = self.ui.select("Ready", [
+            ("full", "start the full run now"),
+            ("smoke", "a 15-minute smoke run of this setup first, to check the containers, the "
+                      "credentials and the network"),
+            ("back", "go back and change something"),
+            ("quit", "leave without starting")], 2)
         if i == 2:
+            raise Back()
+        if i == 3:
             raise Abort("not started")
-        return argv[2:]
+        s["mode"] = "full" if i == 0 else "smoke"
+        return self.command()[2:]
 
     # ---- driver -----------------------------------------------------------------------------
     def run(self, env_file=".env", setup_file=SETUP_FILE):
@@ -370,9 +355,8 @@ class Wizard:
         self.saved = load_setup(setup_file, [a["arm"] for _, a in self.rows])
         self.jump = False
         self.ui.banner("Set up a run. Nothing starts until you choose start at the end.")
-        steps = [self.step_start, self.step_mode, self.step_agents, self.step_settings,
-                 self.step_effort, self.step_runtime, self.step_parallel, self.step_data,
-                 self.step_review]
+        steps = [self.step_start, self.step_settings, self.step_agents, self.step_effort,
+                 self.step_runtime, self.step_parallel, self.step_data, self.step_review]
         history, k = [], 0
         while True:
             self.ui.at_start = not history
@@ -396,14 +380,14 @@ class Wizard:
                 # a saved setup: go straight to the summary (or to the data step when a live run
                 # still needs its data), with every earlier step one Back away
                 self.jump = False
-                history += [1, 2, 3]
+                history += [1, 2]
                 if self.s.get("custom"):
-                    history += [4, 5] + ([6] if len(self.s["picked"]) > 1 else [])
+                    history += [3, 4] + ([5] if len(self.s["picked"]) > 1 else [])
                 if not (self.s.get("task_data") and self.s.get("paper") and self.s.get("contact")):
-                    k = 7
+                    k = 6
                 else:
-                    history.append(7)
-                    k = 8
+                    history.append(6)
+                    k = 7
                 continue
             k += 1
 
@@ -439,7 +423,7 @@ def load_setup(path, known_arms):
         d = json.loads(Path(path).read_text())
     except (OSError, ValueError):
         return None
-    if not isinstance(d, dict) or not d.get("agents") or d.get("mode") not in [m[0] for m in MODES]:
+    if not isinstance(d, dict) or not d.get("agents") or d.get("mode") not in ("smoke", "full"):
         return None
     if any(a not in known_arms for a in d["agents"]):
         return None
