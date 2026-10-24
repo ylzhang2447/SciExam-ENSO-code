@@ -36,9 +36,13 @@ def plan(task_dir, data_dir=None, paper=None):
     rows = []
     for rel, src in items:
         sha = sha256_file(src)
-        rows.append(dict(path=rel, source=str(src), sha256=sha,
-                         formal_sha256=TASK_FILES_SHA256.get(rel),
-                         same_as_formal=(sha == TASK_FILES_SHA256.get(rel))))
+        row = dict(path=rel, source=str(src), sha256=sha, formal_sha256=TASK_FILES_SHA256.get(rel),
+                   same_as_formal=(sha == TASK_FILES_SHA256.get(rel)))
+        if rel == "papers/" + PAPER_FILE:
+            from ..prepare import paper as P
+            row["text_sha256"] = P.text_sha256(src)
+            row["same_article"] = row["same_as_formal"] or row["text_sha256"] == P.TEXT_SHA256
+        rows.append(row)
     excluded = []
     for p in sorted(task_dir.rglob("*")):
         if p.is_file():
@@ -46,6 +50,35 @@ def plan(task_dir, data_dir=None, paper=None):
             if rel not in TASK_TEXT_FILES:
                 excluded.append(rel)
     return rows, excluded, problems
+
+
+def reference_paper(rows):
+    """Which paper the agent read: the formal PDF (byte for byte, or a download of it that differs
+    only by the publisher's stamp) or another rendering of it."""
+    p = {r["path"]: r for r in rows}.get("papers/" + PAPER_FILE)
+    if not p:
+        return {"kind": "none"}
+    formal = p["same_as_formal"] or p.get("same_article")
+    return {"kind": "formal_pdf" if formal else "other_pdf", "sha256": p["sha256"],
+            "text_sha256": p.get("text_sha256"), "stamped": bool(formal and not p["same_as_formal"])}
+
+
+def task_data(rows):
+    """Whether the four observation files are those of the formal runs or rebuilt ones."""
+    data = [r for r in rows if r["path"].startswith("data/")]
+    ok = bool(data) and all(r["same_as_formal"] for r in data)
+    return {"kind": "formal" if ok else "rebuilt",
+            "differs": sorted(r["path"] for r in data if not r["same_as_formal"])}
+
+
+def inputs_note(paper, data):
+    """What a run's inputs change from the formal runs, for its leaderboard name."""
+    notes = []
+    if paper.get("kind") == "other_pdf":
+        notes.append("other PDF")
+    if data.get("kind") == "rebuilt":
+        notes.append("rebuilt data")
+    return notes
 
 
 def install(rows, workspace):

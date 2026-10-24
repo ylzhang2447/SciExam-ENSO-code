@@ -42,6 +42,8 @@ same time (five grading jobs in total), so each is a little slower alone than on
 
 | command | what it does | time |
 |---|---|---|
+| `sciexam start` | checks what a run needs, helps with what is missing, then opens the run setup (see the top-level README) | interactive |
+| `sciexam fetch-data` | downloads the four observation files of the formal runs (one 180 MB archive) and checks each sha256 | about 10 s |
 | `sciexam build-image` | builds the grading image (223 MB compressed, 949 MB on disk) | 43 s |
 | `sciexam download --local PATH` | copies and verifies the dataset | a few seconds |
 | `sciexam grade-sample DIR` | grades one submission folder | 40 to 60 s, GPT-6 Astra checkpoints up to 26 min |
@@ -51,7 +53,7 @@ same time (five grading jobs in total), so each is a little slower alone than on
 | `sciexam ablation --refit fable51/S3_affine_periodic_drift` | reruns the teacher simulation and refit of one simplified model | 20 s |
 | `sciexam figures` | regenerates the data figures (PDF and PNG) | about 3 s |
 | `sciexam prepare-data` | downloads ERSST v5, GODAS and NCEP/NCAR R1 (344 MB) and rebuilds the five indices | 4.9 min (download 292 s, processing 0.5 s) |
-| `sciexam fetch-paper --file PDF` | checks the sha256 of the reference paper and places it in a task folder | under 1 s |
+| `sciexam fetch-paper --file PDF` | checks that a PDF is the reference paper (its bytes, or its text without the publisher's download stamp) and places it in a task folder | under 1 s |
 | `sciexam run-agent --agent agents/ARM.yaml --dry-run` | assembles the agent container, task tree, prompts and network policy without starting an agent | under 0.1 s |
 | `sciexam run-agent --agent agents/ARM.yaml --net-check` | starts the arm's networks and proxy, shows that a non-allowlisted host is refused and PyPI is reachable, removes everything | about 5 s |
 | `sciexam run-agent --agent agents/ARM.yaml --hours 6` | reruns one agent for the full budget (needs your own credentials) | 6 h of eligible time |
@@ -199,18 +201,23 @@ records the spec, the host and how many agents ran at once, and the seal covers 
 
 ## Rerunning the benchmark
 
-A full rerun of one system takes four steps: rebuild the observations the agents receive, supply
+A full rerun of one system takes four steps: fetch the observations the agents receive, supply
 the reference paper, run the agent for six hours of eligible time, and grade its checkpoints.
 
 ```
 cp .env.example .env                                   # fill in your own credentials
-sciexam prepare-data --keep-raw --out prepared         # the four raw data files, in prepared/raw
+sciexam fetch-data --out prepared/raw                  # the four raw data files of the formal runs
 sciexam fetch-paper --file /path/to/jin1997.pdf        # checks your copy of the reference paper
 sciexam run-agent --agent agents/fable51.yaml --task-data prepared/raw --paper /path/to/jin1997.pdf --dry-run
 sciexam run-agent --agent agents/fable51.yaml --task-data prepared/raw --paper /path/to/jin1997.pdf --smoke
 sciexam run-agent --agent agents/fable51.yaml --task-data prepared/raw --paper /path/to/jin1997.pdf --hours 6
 sciexam grade-run sciexam_runs/fable51-MMDD-HHMM --offset 0
 ```
+
+`fetch-data` downloads the four files the agents received in the formal runs (one 180 MB
+archive, a release asset of this repository) and checks each against the sha256 the harness
+records. `prepare-data --keep-raw` rebuilds them from NOAA instead; NOAA revises these datasets,
+so a rebuild may differ from the formal files, which the dry run then marks.
 
 `--dry-run` starts nothing. `--smoke` is a 15-minute check of the containers, credentials and
 network, with short phase caps, and is not comparable with the paper. `grade-run` grades every
@@ -268,6 +275,16 @@ errors count as failures, and a slower model makes fewer turns in the same budge
 A model that needs a newer client than the template pins needs `scaffold.version` and
 `scaffold.binary_sha256` updated in its configuration, which the image build checks; that changes
 the protocol, and the submission check then reports it.
+
+### Where files are kept
+
+An install made by `install.sh` keeps everything in the folder chosen at install time, whose
+launcher sets `SCIEXAM_HOME`: the dataset in `data/dataset`, the observation files in
+`data/prepared/raw`, the paper in `data/papers`, the runs in `runs/`, the ledger, the contact and
+added models in `state/`, and the credentials in `.env`. Without `SCIEXAM_HOME` the older defaults
+hold: the dataset and the state in `~/.cache/sciexam`, the runs in `./sciexam_runs`, `.env` in the
+current folder. `SCIEXAM_DATA`, `SCIEXAM_LEDGER`, `SCIEXAM_PROFILE` and `SCIEXAM_AGENTS` still
+override single paths. See `sciexam/home.py`.
 
 ### Interactive setup
 
@@ -346,7 +363,7 @@ pauses credited for provider quota and service interruptions, and the fixed 21,6
 `--dry-run` prints the arm summary, the task tree with the sha256 of each file, the image builds,
 the network policy and container spec, the first command line, which credentials are set (never
 their values) and every prompt with its sha256. A real run also needs the four raw data files
-(`sciexam prepare-data --keep-raw`, then `--task-data OUT/raw`) and the reference paper
+(`sciexam fetch-data`, then `--task-data` with its folder) and the reference paper
 (`--paper PDF`).
 
 The agent container has no internet access except the model endpoint of its route and Python
@@ -391,6 +408,7 @@ contains one of your credential values or a common secret pattern.
 | scaffold and model, lifecycle | the run used the configuration in `agent.yaml` and the formal lifecycle (no smoke runs) |
 | budget, network, reasoning effort | the paper's settings, or `decl` when the run recorded a change (`--hours`, `--network`, `--allow-host`, `--effort`) |
 | run completion | the run finished its full eligible budget |
+| task files | the formal task text, the four observation files of the formal runs and the formal PDF; `decl` for rebuilt observation files or another PDF of the paper |
 | compute | the agent container had the spec's cap (5 CPUs, 10 GB), on a host that held every agent running at once |
 | compute samples | `resources.jsonl` sampled the run throughout, and the disk never came within 1 GB of full. Peak CPU and memory and any out-of-memory kills inside the cap are reported |
 | checkpoints | one checkpoint per snapshot event, and `final/` is the last one |
@@ -495,7 +513,8 @@ models can differ in the last digits.
   statistics use. The reference model implements Zhang, Chen, Vialard and Fang (2024, J. Climate
   37(23), arXiv:2402.04585). The dataset card lists the full attributions.
 * Not included: the reference paper (Jin, 1997, J. Atmos. Sci. 54(7), 811 to 829), the raw gridded
-  observations (rebuilt by `prepare-data`), session transcripts, and the proprietary agent clients.
+  observations (a release asset of this repository, fetched by `fetch-data`, or rebuilt by
+  `prepare-data`), session transcripts, and the proprietary agent clients.
 * The API gateway of the OpenRouter arms (`environment/gateway/`) installs `litellm==1.83.9` and
   the open dependencies of its proxy, without the `proxy` extra, which pulls in the proprietary
   `litellm-enterprise` package. Our patch to it ships as a diff with the MIT notice of LiteLLM.

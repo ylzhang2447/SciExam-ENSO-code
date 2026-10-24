@@ -16,6 +16,7 @@ dependencies = [
     "pandas>=2.0",
     "xarray>=2023.1",
     "netCDF4>=1.6",
+    "pypdf==5.4.0",     # the paper check; exact, so the text fingerprint stays the same
 ]
 
 [project.optional-dependencies]

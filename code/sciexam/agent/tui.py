@@ -37,6 +37,19 @@ def clip(line, width):
     return "".join(out) + (RESET if cut else "")
 
 
+def label_width(options):
+    """The width of a menu's label column: its longest label, at least 10."""
+    return max([10] + [len(label) for label, _ in options])
+
+
+def bar(done, total, width=30):
+    """A text progress bar: [████████······]  57%  103 of 180 MB."""
+    frac = min(1.0, done / total) if total else 0.0
+    n = int(round(frac * width))
+    return "[%s%s] %3d%%  %.0f of %.0f MB" % ("\u2588" * n, "\u00b7" * (width - n), frac * 100,
+                                            done / 1e6, total / 1e6)
+
+
 def window(lines, focus, rows):
     """At most ``rows`` of ``lines``: all of them when they fit, else a slice around ``focus``
     between two lines that count what is above and below. Always ``rows`` long once it scrolls,
@@ -120,8 +133,9 @@ class Plain:
 
     def select(self, question, options, default=0):
         """options: list of (label, description). Returns the chosen index."""
+        w = label_width(options)
         for i, (label, desc) in enumerate(options, 1):
-            self.out("  %d) %-10s %s" % (i, label, desc))
+            self.out("  %d) %s %s" % (i, label.ljust(w), desc))
         while True:
             ans = self._ask(question, str(default + 1))
             if ans.isdigit() and 1 <= int(ans) <= len(options):
@@ -158,6 +172,26 @@ class Plain:
             if not err:
                 return ans
             self.out("  " + err)
+
+    def page(self):
+        """Start a new page: numbered prompts just go on below."""
+        self.out("")
+
+    def progress(self, done, total):
+        """Progress of a download: numbered prompts print a line at every tenth."""
+        step = int(10 * done / total) if total else 0
+        if step != getattr(self, "_step_shown", -1) or done >= total:
+            self._step_shown = step
+            self.out("  " + bar(done, total))
+        if done >= total:
+            self._step_shown = -1
+
+    def secret(self, question):
+        """A value that must not be echoed (an API key): read with getpass on a terminal."""
+        if self.ask_fn is input:
+            import getpass
+            return getpass.getpass(question + ": ")
+        return self.ask_fn(question + ": ")
 
     def confirm(self, question, default=False):
         while True:
@@ -251,6 +285,24 @@ class Keys(Plain):
         self.w.write("  " + DIM + subtitle + RESET + "\n")
         self.w.write("  " + DIM + "Arrow keys to move, Enter to choose, left or b to go back, q to quit." + RESET + "\n")
 
+    def page(self):
+        """Start a new page: clear the screen and draw the banner again, so that a checklist shown
+        after each step replaces the last one instead of piling up below it."""
+        self.w.write("\033[H\033[2J")
+        if self._subtitle is not None:
+            self._banner()
+        self._step = []
+        self.w.flush()
+
+    def progress(self, done, total):
+        """One bar redrawn in place on its line, ended with a newline once complete."""
+        cols = shutil.get_terminal_size((100, 24)).columns
+        width = max(10, min(40, cols - 30))
+        self.w.write("\r" + CLEAR_LINE + "  " + GREEN + bar(done, total, width) + RESET)
+        if total and done >= total:
+            self.w.write("\n")
+        self.w.flush()
+
     def heading(self, text):
         self._step = ["", ORANGE + BOLD + text + RESET]
         self.w.write("\n" + ORANGE + BOLD + text + RESET + "\n")
@@ -261,6 +313,7 @@ class Keys(Plain):
 
     def select(self, question, options, default=0):
         i = default
+        w = label_width(options)
         header = BOLD + question + RESET + DIM + "  (up/down, Enter, left to go back)" + RESET
         self.w.write(HIDE)
         first = True
@@ -269,9 +322,9 @@ class Keys(Plain):
                 lines = []
                 for k, (label, desc) in enumerate(options):
                     if k == i:
-                        lines.append("  " + ORANGE + BOLD + "> " + label.ljust(10) + RESET + " " + desc)
+                        lines.append("  " + ORANGE + BOLD + "> " + label.ljust(w) + RESET + " " + desc)
                     else:
-                        lines.append("    " + label.ljust(10) + " " + DIM + desc + RESET)
+                        lines.append("    " + label.ljust(w) + " " + DIM + desc + RESET)
                 self._draw(lines, first, focus=i, header=header)
                 first = False
                 key = self._key()

@@ -10,6 +10,7 @@ import sys
 import time
 from pathlib import Path
 
+from .. import home as H
 from . import conditions as K
 from . import config as C
 from . import custom as X
@@ -81,7 +82,7 @@ def _run_key(arm, a):
 
 
 def _paths(arm, a, key):
-    wd = Path(a.workdir or ("sciexam_runs/%s" % key)).resolve()
+    wd = Path(a.workdir or (H.runs() / key)).resolve()
     # A condition run works in /work/<baseline arm>, so the path does not name the condition.
     ctr_name = a.run_name or (arm.get("condition") or {}).get("baseline_arm") or arm["arm"]
     out = {"workdir": str(wd), "workspace": str(wd / "workspace"),
@@ -333,6 +334,8 @@ def dry_run(arm, a, root):
         rows, excluded, problems = T.plan(root / "task", a.task_data, a.paper)
         for row in rows:
             mark = ("same bytes as the formal runs" if row["same_as_formal"]
+                    else "the formal article, with the publisher's download stamp"
+                    if row.get("same_article")
                     else "DIFFERS from the formal runs (formal %s)" % (row["formal_sha256"] or "?")[:16])
             print("  %-66s %s  %s" % (row["path"], row["sha256"][:16], mark))
         print("  submission/processed/  (empty folders, created by the harness)")
@@ -781,16 +784,19 @@ def live_run(arm, a, root):
                 "lifecycle": lifecycle, "budget_s": _budget(arm, a), "smoke": a.smoke,
                 "network_allowlist": C.allowlist(arm), "prompt_sha256": P.prompt_digests(),
                 "custom": arm.get("custom"), "resources": R.record(host, at_once, paths["workdir"]),
-                "task_files": rows, "started_epoch": int(time.time())}
+                "task_files": rows, "reference_paper": T.reference_paper(rows),
+                "task_data": T.task_data(rows), "started_epoch": int(time.time())}
+        inputs = T.inputs_note(meta["reference_paper"], meta["task_data"])
         # What the run's submission needs, fixed now rather than asked after six hours: the
         # leaderboard name, the contact, and (for a full run) how many runs of this system the
         # ledger now holds, this one included.
         contact = a.contact or LG.load_profile().get("contact")
         LG.save_contact(a.contact)
-        meta["submission"] = {"system_name": LG.system_name(arm, _budget(arm, a)), "contact": contact}
+        meta["submission"] = {"system_name": LG.system_name(arm, _budget(arm, a), inputs),
+                              "contact": contact}
         if not a.smoke:
             meta["submission"]["runs_attempted"] = LG.record_start(arm, _budget(arm, a), key,
-                                                                   paths["workdir"])
+                                                                   paths["workdir"], inputs)
         if cond:
             meta["condition"] = dict(K.summary(arm), **condition_record)
             meta["condition"]["task_tree_sha256"] = K.tree_sha256(rows)
@@ -1010,7 +1016,7 @@ def run_batch(a, paths, keys, levels):
     import threading
     if a.run_name or a.workdir:
         raise RuntimeError("--run-name and --workdir name one run, use --batch-dir for several arms")
-    batch = Path(a.batch_dir or ("sciexam_runs/batch-%s" % time.strftime("%m%d-%H%M%S"))).resolve()
+    batch = Path(a.batch_dir or (H.runs() / ("batch-%s" % time.strftime("%m%d-%H%M%S")))).resolve()
     if not (a.dry_run or a.net_check):
         short = R.problems(R.host(), min(max(1, a.parallel), len(paths)), batch)
         if short:
@@ -1131,6 +1137,13 @@ def cmd_add_model(a):
 
 
 def register(sub):
+    from .start import cmd_start
+    p = sub.add_parser("start", help="new here? checks what a run needs, helps with what is missing, "
+                                     "then sets up a run")
+    p.add_argument("--env-file", default=H.env_file(),
+                   help="credential file (default %s)" % H.env_file())
+    p.set_defaults(fn=cmd_start)
+
     p = sub.add_parser("run-agent", help="rerun one ranked arm or condition run with the released "
                                          "harness (Docker, the user's own credentials)")
     p.add_argument("--agent", action="append",
@@ -1155,7 +1168,7 @@ def register(sub):
     p.add_argument("--parallel", type=int, default=1,
                    help="with several arms, how many run at the same time (default 1)")
     p.add_argument("--batch-dir", help="with several arms, the folder of their runs and logs "
-                                       "(default ./sciexam_runs/batch-<time>)")
+                                       "(default %s/batch-<time>)" % H.runs())
     g = p.add_mutually_exclusive_group()
     g.add_argument("--smoke", action="store_true",
                    help="15-minute plumbing check: short caps, Phase 1 not required, not comparable")
@@ -1165,10 +1178,11 @@ def register(sub):
     p.add_argument("--net-check", action="store_true",
                    help="start the arm's networks and proxy, probe them from a throwaway container, "
                         "remove everything")
-    p.add_argument("--workdir", help="run folder (default ./sciexam_runs/<arm>-<time>)")
+    p.add_argument("--workdir", help="run folder (default %s/<arm>-<time>)" % H.runs())
     p.add_argument("--run-name", help="name of the run, also the workspace path /work/<name> "
                                       "inside the container (default: the arm key)")
-    p.add_argument("--env-file", default=".env", help="credential file (default .env, see .env.example)")
+    p.add_argument("--env-file", default=H.env_file(),
+                   help="credential file (default %s, see .env.example)" % H.env_file())
     p.add_argument("--task-data", help="folder with the four raw data files "
                                        "(sciexam prepare-data --keep-raw writes them to OUT/raw)")
     p.add_argument("--paper", help="path to the Jin (1997) PDF")
