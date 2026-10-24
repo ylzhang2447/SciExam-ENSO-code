@@ -199,18 +199,23 @@ records the spec, the host and how many agents ran at once, and the seal covers 
 
 ## Rerunning the benchmark
 
-A full rerun of one system takes four steps: rebuild the observations the agents receive, supply
+A full rerun of one system takes four steps: fetch the observations the agents receive, supply
 the reference paper, run the agent for six hours of eligible time, and grade its checkpoints.
 
 ```
 cp .env.example .env                                   # fill in your own credentials
-sciexam prepare-data --keep-raw --out prepared         # the four raw data files, in prepared/raw
+sciexam fetch-data --out prepared/raw                  # the four raw data files of the formal runs
 sciexam fetch-paper --file /path/to/jin1997.pdf        # checks your copy of the reference paper
 sciexam run-agent --agent agents/fable51.yaml --task-data prepared/raw --paper /path/to/jin1997.pdf --dry-run
 sciexam run-agent --agent agents/fable51.yaml --task-data prepared/raw --paper /path/to/jin1997.pdf --smoke
 sciexam run-agent --agent agents/fable51.yaml --task-data prepared/raw --paper /path/to/jin1997.pdf --hours 6
 sciexam grade-run sciexam_runs/fable51-MMDD-HHMM --offset 0
 ```
+
+`fetch-data` downloads the four files the agents received in the formal runs (one 180 MB
+archive, a release asset of this repository) and checks each against the sha256 the harness
+records. `prepare-data --keep-raw` rebuilds them from NOAA instead; NOAA revises these datasets,
+so a rebuild may differ from the formal files, which the dry run then marks.
 
 `--dry-run` starts nothing. `--smoke` is a 15-minute check of the containers, credentials and
 network, with short phase caps, and is not comparable with the paper. `grade-run` grades every
@@ -346,7 +351,7 @@ pauses credited for provider quota and service interruptions, and the fixed 21,6
 `--dry-run` prints the arm summary, the task tree with the sha256 of each file, the image builds,
 the network policy and container spec, the first command line, which credentials are set (never
 their values) and every prompt with its sha256. A real run also needs the four raw data files
-(`sciexam prepare-data --keep-raw`, then `--task-data OUT/raw`) and the reference paper
+(`sciexam fetch-data`, then `--task-data` with its folder) and the reference paper
 (`--paper PDF`).
 
 The agent container has no internet access except the model endpoint of its route and Python
@@ -495,7 +500,8 @@ models can differ in the last digits.
   statistics use. The reference model implements Zhang, Chen, Vialard and Fang (2024, J. Climate
   37(23), arXiv:2402.04585). The dataset card lists the full attributions.
 * Not included: the reference paper (Jin, 1997, J. Atmos. Sci. 54(7), 811 to 829), the raw gridded
-  observations (rebuilt by `prepare-data`), session transcripts, and the proprietary agent clients.
+  observations (a release asset of this repository, fetched by `fetch-data`, or rebuilt by
+  `prepare-data`), session transcripts, and the proprietary agent clients.
 * The API gateway of the OpenRouter arms (`environment/gateway/`) installs `litellm==1.83.9` and
   the open dependencies of its proxy, without the `proxy` extra, which pulls in the proprietary
   `litellm-enterprise` package. Our patch to it ships as a diff with the MIT notice of LiteLLM.

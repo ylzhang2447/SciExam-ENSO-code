@@ -8,7 +8,7 @@ saying what it will do) or says exactly what to do and checks again:
     Docker running         opens Docker Desktop (macOS)      start the Docker service (Linux)
     Docker CPUs, memory    -                                 Docker Desktop: Settings > Resources
     dataset                copies it from the code checkout  -
-    raw data               downloads and rebuilds it (NOAA)  -
+    raw data               downloads the formal runs' files  -
     reference paper        checks and copies your PDF        download it from the publisher
     disk                   -                                 free some space
     credentials            writes what you enter to .env     sign in to the model provider
@@ -66,9 +66,9 @@ class System:
         from .. import dataset as DS
         DS.download(local=src)
 
-    def prepare(self, out):
-        return subprocess.run([sys.executable, "-m", "sciexam", "prepare-data", "--out", str(out),
-                               "--keep-raw"]).returncode
+    def fetch_data(self, raw_dir, log):
+        from ..prepare import taskdata as TD
+        return TD.fetch(raw_dir, log=log)
 
     def install_paper(self, src, accept_different, log):
         from ..prepare import paper as P
@@ -171,10 +171,14 @@ class Start:
                      "found next to this install.", "Reinstall with install.sh, or run "
                      "sciexam download --local /path/to/dataset, then choose check again."], None)
         if title == "raw data":
-            return (["The agents receive four observation files (sea surface temperature, ocean "
-                     "temperature and currents, wind), rebuilt from NOAA's public servers."],
-                    ("download them now (about 330 MB, a few minutes) into %s" % H.prepared(),
-                     self._prepare))
+            from ..prepare import taskdata as TD
+            return (["The agents receive four NOAA observation files (sea surface temperature, "
+                     "ocean temperature and currents, wind): the very files of the formal runs, "
+                     "checked by sha256.",
+                     "To rebuild them from NOAA's servers instead: sciexam prepare-data --keep-raw "
+                     "(106 downloads, may differ from the formal files)."],
+                    ("download them now (one file, %d MB) into %s" % (TD.ARCHIVE_MB, H.prepared() / "raw"),
+                     self._fetch_data))
         if title == "reference paper":
             from ..prepare import paper as P
             return (["The agents read one paper, which we may not redistribute:",
@@ -198,15 +202,12 @@ class Start:
         self.last = "dataset copied and checked in %.0f s" % (time.time() - t0)
         return True
 
-    def _prepare(self):
-        self.ui.note("downloading from NOAA and rebuilding; its progress follows (Ctrl-C stops it, "
-                     "and the next start resumes from the checklist)")
-        rc = self.sys.prepare(H.prepared())
-        if rc != 0:
-            self.ui.note("the download or rebuild did not finish (exit %s): see the messages above. "
-                         "Choose do it to try again." % rc)
+    def _fetch_data(self):
+        t0 = time.time()
+        if not self.sys.fetch_data(H.prepared() / "raw", self.ui.note):
+            self.ui.note("Choose do it to try again (check your internet connection).")
             return False
-        self.last = "raw data downloaded and rebuilt"
+        self.last = "raw data downloaded and checked in %.0f s" % (time.time() - t0)
         return True
 
     def _open_docker(self):

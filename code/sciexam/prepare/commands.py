@@ -97,6 +97,11 @@ def cmd_prepare_data(a):
     return 0 if ok_all else 1
 
 
+def cmd_fetch_data(a):
+    from . import taskdata as TD
+    return 0 if TD.fetch(a.out) else 1
+
+
 def cmd_fetch_paper(a):
     from ..dataset import default_root
     from . import paper as P
@@ -127,6 +132,13 @@ def register(sub):
                         "the held-out years are also compared with the reference")
     p.add_argument("--jobs", type=int, default=3, help="parallel OPeNDAP requests (default 3)")
     p.set_defaults(fn=cmd_prepare_data)
+
+    p = sub.add_parser("fetch-data", help="download the four observation files of the formal runs "
+                                          "(one archive, checked by sha256)")
+    p.add_argument("--out", default=str(H.prepared() / "raw"),
+                   help="folder that receives the four files (default %s), the --task-data of "
+                        "run-agent" % (H.prepared() / "raw"))
+    p.set_defaults(fn=cmd_fetch_data)
 
     p = sub.add_parser("fetch-paper", help="how to obtain the reference paper given to the agents, and install a copy")
     p.add_argument("--file", help="a downloaded PDF: check its sha256 and copy it into the task folder")

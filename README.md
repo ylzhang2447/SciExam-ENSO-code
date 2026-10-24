@@ -25,7 +25,7 @@ sciexam start
 `~/sciexam`), says what it will do and waits for your yes. `sciexam start` then checks what a run
 needs (Docker and its CPUs and memory, the dataset, the observations, the reference paper, disk,
 your model account), does what it can after asking (opening Docker Desktop, copying the dataset,
-downloading the observations, saving the key you paste) and says exactly what only you can do
+downloading the observation files of the formal runs, saving the key you paste) and says exactly what only you can do
 (installing Docker, changing its memory, downloading the paper from the publisher). When
 everything is ready it opens the run setup. Nothing outside the chosen folder is changed, except
 a link to the `sciexam` command and one PATH line, each asked for. To uninstall, delete the folder.

@@ -51,12 +51,12 @@ class Machine(S.System):
         (root / "task").mkdir(parents=True)
         (root / "MANIFEST.sha256").write_text("")
 
-    def prepare(self, out):
-        self.calls.append("prepare")
-        (Path(out) / "raw").mkdir(parents=True)
+    def fetch_data(self, raw_dir, log):
+        self.calls.append("fetch")
+        Path(raw_dir).mkdir(parents=True)
         for f in DATA_FILES:
-            (Path(out) / "raw" / f).write_bytes(b"nc")
-        return 0
+            (Path(raw_dir) / f).write_bytes(b"nc")
+        return True
 
     def install_paper(self, src, accept_different, log):
         self.calls.append(("paper", src))
@@ -97,7 +97,7 @@ def test_from_nothing_to_a_run(tmp_path, home):
     raw, paper = H.prepared() / "raw", H.papers_parent() / "papers" / PAPER_FILE
     assert argv == ["--agent", "kimi", "--task-data", str(raw), "--paper", str(paper),
                     "--contact", "me@example.org"]
-    assert m.calls == ["open", "copy", "prepare", ("paper", str(pdf))]
+    assert m.calls == ["open", "copy", "fetch", ("paper", str(pdf))]
     env = home / ".env"
     assert "OPENROUTER_API_KEY=sk-or-v1-test-key-1234567890" in env.read_text()
     assert stat.S_IMODE(os.stat(env).st_mode) == 0o600
@@ -132,12 +132,13 @@ def test_write_env_keeps_other_lines(tmp_path):
 
 def test_a_failed_step_waits_and_the_next_page_says_what_happened():
     class Offline(Machine):
-        def prepare(self, out):
-            return 1                              # NOAA unreachable
+        def fetch_data(self, raw_dir, log):
+            log("the download did not finish: no network")
+            return False
     lines = []
     it = iter(["1", "1", "1", "", "3"])          # open Docker, copy, download (fails), Enter, leave
     with pytest.raises(Abort):
         S.Start(ui=Plain(ask=lambda q: next(it), out=lines.append), system=Offline()).run()
     text = "\n".join(lines)
     assert "Last step: Docker Desktop started" in text and "Last step: dataset copied" in text
-    assert "did not finish (exit 1)" in text and text.count("Next: raw data") == 2
+    assert "did not finish: no network" in text and text.count("Next: raw data") == 2
