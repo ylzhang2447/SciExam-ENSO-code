@@ -71,6 +71,14 @@ class Machine(S.System):
     def disk_free(self, path):
         return 100.0
 
+    def open(self, target):
+        self.calls.append(("open", str(target)))
+        return True
+
+    def sha256(self, path):
+        from sciexam.prepare import paper as P
+        return P.SHA256 if b"formal" in Path(path).read_bytes() else "0" * 64
+
     def sleep(self, s):
         pass
 
@@ -92,7 +100,7 @@ def test_from_nothing_to_a_run(tmp_path, home):
         "1",                                   # Docker running: open it
         "1",                                   # dataset: copy it
         "1",                                   # raw data: download it
-        "1", str(pdf).replace(" ", "\\ "),    # paper: add it, dragged into the terminal
+        "3", str(pdf).replace(" ", "\\ "),    # paper: already downloaded elsewhere, dragged in
         "", "sk-or-v1-test-key-1234567890",    # accounts: OpenRouter, the key (not shown)
         "",                                    # go on to the run setup
         "", "kimi", "", "", "me@example.org", "1"], m)
@@ -145,3 +153,47 @@ def test_a_failed_step_waits_and_the_next_page_says_what_happened():
     text = "\n".join(lines)
     assert "Last step: Docker Desktop started" in text and "Last step: dataset copied" in text
     assert "did not finish: no network" in text and text.count("Next: raw data") == 2
+
+
+def ready_but_the_paper():
+    m = Machine()
+    m.running = True
+    m.copy_dataset(None)
+    m.fetch_data(H.prepared() / "raw", print, lambda d, t: None)
+    m.calls = []
+    return m
+
+
+def test_a_pdf_saved_in_the_paper_folder_is_found_and_checked():
+    m = ready_but_the_paper()
+    folder = H.papers_parent() / "papers"
+    lines = []
+    it = iter(["1", "2"])                         # open the publisher's page, open the folder
+    def answer(q):
+        a = next(it, None)
+        if a is None:                            # the user has saved the PDF meanwhile: check again
+            (folder / "jas-1997-download.pdf").write_bytes(b"%PDF formal")
+            raise Abort("checked")               # stop before the accounts step
+        return a
+    with pytest.raises(Abort):
+        S.Start(ui=Plain(ask=answer, out=lines.append), system=m).run()
+    from sciexam.prepare import paper as P
+    assert m.calls == [("open", P.DOI_URL), ("open", str(folder))]
+    st = S.Start(ui=Plain(ask=lambda q: (_ for _ in ()).throw(Abort("x")), out=lines.append), system=m)
+    st.adopt_saved_paper()
+    assert (folder / PAPER_FILE).exists() and not (folder / "jas-1997-download.pdf").exists()
+    assert "the PDF of the formal runs" in st.last
+
+
+def test_another_rendering_can_be_used_when_asked():
+    m = ready_but_the_paper()
+    folder = H.papers_parent() / "papers"
+    folder.mkdir(parents=True)
+    (folder / "jin.pdf").write_bytes(b"%PDF re-rendered")
+    lines = []
+    it = iter(["1"])                              # use jin.pdf anyway
+    with pytest.raises(StopIteration):           # then the accounts step asks: the paper is done
+        S.Start(ui=Plain(ask=lambda q: next(it), out=lines.append), system=m).run()
+    text = "\n".join(lines)
+    assert "found jin.pdf, not the PDF of the formal runs" in text
+    assert (folder / PAPER_FILE).exists() and "Model accounts" in text

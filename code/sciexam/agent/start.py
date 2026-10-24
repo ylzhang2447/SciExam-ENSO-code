@@ -9,7 +9,9 @@ saying what it will do) or says exactly what to do and checks again:
     Docker CPUs, memory    -                                 Docker Desktop: Settings > Resources
     dataset                copies it from the code checkout  -
     raw data               downloads the formal runs' files  -
-    reference paper        checks and copies your PDF        download it from the publisher
+    reference paper        opens the publisher's page and    download it from the publisher
+                           the folder to save it in, checks
+                           the PDF found there
     disk                   -                                 free some space
     credentials            writes what you enter to .env     sign in to the model provider
 
@@ -55,6 +57,18 @@ class System:
 
     def open_docker(self):
         return subprocess.run(["open", "-a", "Docker"], capture_output=True).returncode == 0
+
+    def open(self, target):
+        """Open a web page or a folder with the desktop's own program."""
+        cmd = "open" if self.platform == "darwin" else "xdg-open"
+        try:
+            return subprocess.run([cmd, str(target)], capture_output=True).returncode == 0
+        except OSError:
+            return False
+
+    def sha256(self, path):
+        from ..prepare import paper as P
+        return P.sha256(path)
 
     def local_dataset(self):
         from .docker_env import repo_root
@@ -132,7 +146,10 @@ class Start:
         out.append(("raw data", not missing, str(raw) if not missing else
                     "%d of %d files missing in %s" % (len(missing), len(DATA_FILES), raw)))
         paper = H.papers_parent() / "papers" / PAPER_FILE
-        out.append(("reference paper", paper.exists(), str(paper) if paper.exists() else "not added yet"))
+        other = self._paper_candidate()
+        out.append(("reference paper", paper.exists(), str(paper) if paper.exists() else
+                    "found %s, not the PDF of the formal runs" % other.name if other else
+                    "not added yet"))
         free, need = self.sys.disk_free(H.runs()), R.disk_needed_gb(1)
         out.append(("disk", free >= need, "%.1f GB free, %d GB needed" % (free, need)))
         return out
@@ -181,11 +198,27 @@ class Start:
                      self._fetch_data))
         if title == "reference paper":
             from ..prepare import paper as P
+            folder = H.papers_parent() / "papers"
+            folder.mkdir(parents=True, exist_ok=True)
+            other = self._paper_candidate()
+            if other:
+                return (["%s is in the paper folder, but its sha256 is not that of the PDF the "
+                         "agents read." % other.name,
+                         "The publisher may have re-rendered the same article. It can be used, and "
+                         "the run's records will show the difference."],
+                        [("use it", "use %s anyway" % other.name, lambda: self._adopt(other)),
+                         ("open page", "download it again from the publisher's page",
+                          lambda: self._open(P.DOI_URL))])
             return (["The agents read one paper, which we may not redistribute:",
-                     "  " + P.CITATION, "  " + P.DOI_URL,
-                     "Download the PDF from the publisher (your library may give access), then "
-                     "choose add it and drag the file into this window."],
-                    ("add the PDF you downloaded", self._add_paper))
+                     "  " + P.CITATION,
+                     "Download the PDF from the publisher's page (your library may give access) and "
+                     "save it in this folder, under any name:",
+                     "  " + str(folder),
+                     "then choose check again: the PDF is found and checked there."],
+                    [("open page", "open the publisher's page in your browser",
+                      lambda: self._open(P.DOI_URL)),
+                     ("open folder", "open the folder to save it in", lambda: self._open(folder)),
+                     ("add", "it is already downloaded elsewhere: drag it in", self._add_paper)])
         if title == "disk":
             return (["Free some disk space where the runs are kept (%s), then choose check again."
                      % H.runs().resolve()], None)
@@ -224,6 +257,34 @@ class Start:
                      "choose check again.")
         return False
 
+    def _open(self, target):
+        if not self.sys.open(target):
+            self.ui.note("could not open %s: open it yourself" % target)
+            return False
+        return True
+
+    def _paper_candidate(self):
+        """A PDF saved in the paper folder under another name, newest first, or None."""
+        folder = H.papers_parent() / "papers"
+        if (folder / PAPER_FILE).exists() or not folder.is_dir():
+            return None
+        pdfs = sorted((p for p in folder.iterdir() if p.suffix.lower() == ".pdf" and p.is_file()),
+                      key=lambda p: p.stat().st_mtime, reverse=True)
+        return pdfs[0] if pdfs else None
+
+    def _adopt(self, pdf):
+        pdf.replace(pdf.parent / PAPER_FILE)
+        self.last = "reference paper %s in place" % pdf.name
+        return True
+
+    def adopt_saved_paper(self):
+        """A PDF saved in the paper folder with the formal sha256 is put in place by itself."""
+        from ..prepare import paper as P
+        pdf = self._paper_candidate()
+        if pdf and self.sys.sha256(pdf) == P.SHA256:
+            self._adopt(pdf)
+            self.last = "found %s in the paper folder: the PDF of the formal runs" % pdf.name
+
     def _add_paper(self):
         src = dropped_path(self.ui.text("Drag the PDF here (or type its path), then press Enter", ""))
         lines = []
@@ -252,6 +313,7 @@ class Start:
     def checklist(self):
         """Loop until every item is ready. Returns False when the user leaves."""
         while True:
+            self.adopt_saved_paper()
             rows = self.items()
             self.show(rows)
             bad = [r for r in rows if not r[1]]
@@ -262,7 +324,9 @@ class Start:
             self.ui.heading("Next: " + title)
             for ln in lines:
                 self.ui.note(ln)
-            opts = ([("do it", action[0])] if action else []) + [
+            actions = ([] if not action else [("do it", action[0], action[1])]
+                       if isinstance(action, tuple) else action)
+            opts = [(k, label) for k, label, _ in actions] + [
                 ("check", "check again"), ("leave", "leave for now (nothing is lost)")]
             self.ui.at_start = True
             try:
@@ -272,7 +336,8 @@ class Start:
             choice = opts[i][0]
             if choice == "leave":
                 return False
-            if choice == "do it" and action[1]() is False:
+            fn = next((f for k, _, f in actions if k == choice), None)
+            if fn and fn() is False:
                 # keep what went wrong on the screen until it has been read
                 self.ui.text("Press Enter to go back to the checklist", "")
 
