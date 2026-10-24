@@ -98,8 +98,15 @@ def cmd_prepare_data(a):
 
 
 def cmd_fetch_data(a):
+    import sys
     from . import taskdata as TD
-    return 0 if TD.fetch(a.out) else 1
+    progress = None
+    if sys.stdout.isatty():
+        from ..agent.tui import bar
+        def progress(done, total):
+            sys.stdout.write("\r  " + bar(done, total) + ("\n" if done >= total else ""))
+            sys.stdout.flush()
+    return 0 if TD.fetch(a.out, progress=progress) else 1
 
 
 def cmd_fetch_paper(a):

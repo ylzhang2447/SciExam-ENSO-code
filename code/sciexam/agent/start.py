@@ -66,9 +66,9 @@ class System:
         from .. import dataset as DS
         DS.download(local=src)
 
-    def fetch_data(self, raw_dir, log):
+    def fetch_data(self, raw_dir, log, progress=None):
         from ..prepare import taskdata as TD
-        return TD.fetch(raw_dir, log=log)
+        return TD.fetch(raw_dir, log=log, progress=progress)
 
     def install_paper(self, src, accept_different, log):
         from ..prepare import paper as P
@@ -204,7 +204,7 @@ class Start:
 
     def _fetch_data(self):
         t0 = time.time()
-        if not self.sys.fetch_data(H.prepared() / "raw", self.ui.note):
+        if not self.sys.fetch_data(H.prepared() / "raw", self.ui.note, self.ui.progress):
             self.ui.note("Choose do it to try again (check your internet connection).")
             return False
         self.last = "raw data downloaded and checked in %.0f s" % (time.time() - t0)

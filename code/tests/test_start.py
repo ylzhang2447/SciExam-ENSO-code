@@ -51,8 +51,10 @@ class Machine(S.System):
         (root / "task").mkdir(parents=True)
         (root / "MANIFEST.sha256").write_text("")
 
-    def fetch_data(self, raw_dir, log):
+    def fetch_data(self, raw_dir, log, progress=None):
         self.calls.append("fetch")
+        for done in (60e6, 120e6, 180e6):
+            progress(done, 180e6)
         Path(raw_dir).mkdir(parents=True)
         for f in DATA_FILES:
             (Path(raw_dir) / f).write_bytes(b"nc")
@@ -103,6 +105,7 @@ def test_from_nothing_to_a_run(tmp_path, home):
     assert stat.S_IMODE(os.stat(env).st_mode) == 0o600
     assert "sk-or-v1-test" not in text                    # the key is never printed
     assert "Everything is kept in %s" % home in text
+    assert "] 100%  180 of 180 MB" in text                # the download's progress bar
     for p in (H.dataset(), raw, paper, env):              # nothing outside the chosen folder
         assert home in Path(p).parents
 
@@ -132,7 +135,7 @@ def test_write_env_keeps_other_lines(tmp_path):
 
 def test_a_failed_step_waits_and_the_next_page_says_what_happened():
     class Offline(Machine):
-        def fetch_data(self, raw_dir, log):
+        def fetch_data(self, raw_dir, log, progress=None):
             log("the download did not finish: no network")
             return False
     lines = []

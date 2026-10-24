@@ -37,6 +37,14 @@ def clip(line, width):
     return "".join(out) + (RESET if cut else "")
 
 
+def bar(done, total, width=30):
+    """A text progress bar: [████████······]  57%  103 of 180 MB."""
+    frac = min(1.0, done / total) if total else 0.0
+    n = int(round(frac * width))
+    return "[%s%s] %3d%%  %.0f of %.0f MB" % ("\u2588" * n, "\u00b7" * (width - n), frac * 100,
+                                            done / 1e6, total / 1e6)
+
+
 def window(lines, focus, rows):
     """At most ``rows`` of ``lines``: all of them when they fit, else a slice around ``focus``
     between two lines that count what is above and below. Always ``rows`` long once it scrolls,
@@ -163,6 +171,15 @@ class Plain:
         """Start a new page: numbered prompts just go on below."""
         self.out("")
 
+    def progress(self, done, total):
+        """Progress of a download: numbered prompts print a line at every tenth."""
+        step = int(10 * done / total) if total else 0
+        if step != getattr(self, "_step_shown", -1) or done >= total:
+            self._step_shown = step
+            self.out("  " + bar(done, total))
+        if done >= total:
+            self._step_shown = -1
+
     def secret(self, question):
         """A value that must not be echoed (an API key): read with getpass on a terminal."""
         if self.ask_fn is input:
@@ -269,6 +286,15 @@ class Keys(Plain):
         if self._subtitle is not None:
             self._banner()
         self._step = []
+        self.w.flush()
+
+    def progress(self, done, total):
+        """One bar redrawn in place on its line, ended with a newline once complete."""
+        cols = shutil.get_terminal_size((100, 24)).columns
+        width = max(10, min(40, cols - 30))
+        self.w.write("\r" + CLEAR_LINE + "  " + GREEN + bar(done, total, width) + RESET)
+        if total and done >= total:
+            self.w.write("\n")
         self.w.flush()
 
     def heading(self, text):

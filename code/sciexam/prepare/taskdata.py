@@ -34,9 +34,10 @@ def present(raw_dir):
                for n in DATA_FILES)
 
 
-def fetch(raw_dir, url=URL, log=print):
+def fetch(raw_dir, url=URL, log=print, progress=None):
     """Download the archive, check it, and put the four files in ``raw_dir``. Returns True when
-    every file is in place with its recorded sha256; on any failure nothing half-written stays."""
+    every file is in place with its recorded sha256; on any failure nothing half-written stays.
+    ``progress(done_bytes, total_bytes)`` draws the download, else a line per tenth is logged."""
     raw = Path(raw_dir)
     raw.mkdir(parents=True, exist_ok=True)
     part = raw / ".task-data.tar.gz.part"
@@ -48,7 +49,9 @@ def fetch(raw_dir, url=URL, log=print):
             for chunk in iter(lambda: r.read(1 << 20), b""):
                 f.write(chunk)
                 got += len(chunk)
-                if total and got * 10 // total > shown:
+                if progress and total:            # no bar without a known size
+                    progress(got, total)
+                elif total and got * 10 // total > shown:
                     shown = got * 10 // total
                     log("  %3d%%  %.0f of %.0f MB" % (shown * 10, got / 1e6, total / 1e6))
         if _sha(part) != ARCHIVE_SHA256:
