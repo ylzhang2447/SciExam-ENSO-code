@@ -213,10 +213,11 @@ class Start:
                         [("use it", "use %s anyway" % other.name, lambda: self._adopt(other)),
                          ("open page", "download it again from the publisher's page",
                           lambda: self._open(P.DOI_URL))])
-            return (["The agents read one paper. Its publisher holds the copyright and its site "
-                     "admits browsers only, so it is the one file you download yourself:",
+            return (["The agents read one paper. It is free to read, but its publisher keeps the "
+                     "copyright (so we may not ship it) and its site admits browsers only, so it is "
+                     "the one file you download yourself:",
                      "  " + P.CITATION,
-                     "Open the publisher's page, download the PDF (your library may give access), "
+                     "Open the publisher's page, click Download PDF (free, no account needed), "
                      "then choose check again.",
                      "The PDF is found in your Downloads folder or in %s, under any name." % folder],
                     [("open page", "open the publisher's page in your browser",
