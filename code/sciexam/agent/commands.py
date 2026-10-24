@@ -14,6 +14,7 @@ from . import config as C
 from . import custom as X
 from . import docker_env as D
 from . import effort as E
+from . import ledger as LG
 from . import prompts as P
 from . import task as T
 
@@ -726,6 +727,7 @@ def live_run(arm, a, root):
     arm = dict(arm, lifecycle=lifecycle)
     ctr = Container(n.agent, lifecycle["agent_uid"])
     os.environ["SCIEXAM_PROVIDER_TZ"] = creds.get("SCIEXAM_PROVIDER_TZ", "UTC")
+    sealed_chain = None
     try:
         for label, argv, sec in D.up_commands(arm, a.name_prefix, n, paths,
                                               Path(__file__).parent / "egress_proxy.py"):
@@ -758,6 +760,15 @@ def live_run(arm, a, root):
                 "network_allowlist": C.allowlist(arm), "prompt_sha256": P.prompt_digests(),
                 "custom": arm.get("custom"),
                 "task_files": rows, "started_epoch": int(time.time())}
+        # What the run's submission needs, fixed now rather than asked after six hours: the
+        # leaderboard name, the contact, and (for a full run) how many runs of this system the
+        # ledger now holds, this one included.
+        contact = a.contact or LG.load_profile().get("contact")
+        LG.save_contact(a.contact)
+        meta["submission"] = {"system_name": LG.system_name(arm, _budget(arm, a)), "contact": contact}
+        if not a.smoke:
+            meta["submission"]["runs_attempted"] = LG.record_start(arm, _budget(arm, a), key,
+                                                                   paths["workdir"])
         if cond:
             meta["condition"] = dict(K.summary(arm), **condition_record)
             meta["condition"]["task_tree_sha256"] = K.tree_sha256(rows)
@@ -781,11 +792,18 @@ def live_run(arm, a, root):
             out["status"], len(out.get("learning_curve") or []), res_dir / "snapshots"))
         print("grade a snapshot with: sciexam grade-sample %s/snapshots/round_NN"
               % res_dir)
+        sealed_chain = run.seal_chain
         return 0 if out["status"] == "complete" else 1
     finally:
         if not a.keep:
             for label, argv in D.down_commands(n):
                 subprocess.run(argv, capture_output=True)
+        # Seal the results once the proxy and gateway are down, so that no log can still grow.
+        # A run that did not reach its end is not sealed and cannot be packaged.
+        if sealed_chain is not None:
+            from . import seal
+            seal.write(res_dir, sealed_chain)
+            print("results sealed: %s" % (res_dir / seal.SEAL_FILE))
 
 
 def _install_resource_gate(ctr):
@@ -917,6 +935,8 @@ def run_batch(a, paths, keys, levels):
             argv += ["--network", a.network]
         for h in a.allow_host or []:
             argv += ["--allow-host", h]
+        if a.contact:
+            argv += ["--contact", a.contact]
         for opt in ("hours", "task_data", "paper", "benchmark_self"):
             v = getattr(a, opt)
             if v is not None:
@@ -991,6 +1011,8 @@ def register(sub):
     p.add_argument("--allow-host", action="append",
                    help="add a host to the agent's allowlist (repeat or comma separate). Not "
                         "comparable with the paper")
+    p.add_argument("--contact", help="email or GitHub handle written into the run for its "
+                                     "leaderboard submission (remembered after the first use)")
     p.add_argument("--parallel", type=int, default=1,
                    help="with several arms, how many run at the same time (default 1)")
     p.add_argument("--batch-dir", help="with several arms, the folder of their runs and logs "

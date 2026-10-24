@@ -27,6 +27,7 @@ from pathlib import Path
 
 from . import data_gate
 from . import prompts as P
+from . import seal
 from .scaffolds import TurnResult
 
 BUNDLE_FILES = ("model.py", "params.json", "model_card.md")
@@ -49,6 +50,8 @@ class Run:
         self.ctr_ws = ctr_ws
         self.results = Path(results)
         self.snapshots = self.results / "snapshots"
+        # each checkpoint's hash, chained to the one before it as it is written (see seal.py)
+        self.seal_chain = seal.GENESIS
         self.ctr = ctr
         self.uid = arm["lifecycle"]["agent_uid"]
         self.proxy_env = proxy_env
@@ -243,12 +246,15 @@ class Run:
                           "error": "%s: %s" % (type(e).__name__, e), "retryable": True})
                 return None
             seen.add(sha)
+            self.seal_chain = seal.link(self.seal_chain, "round_%02d" % idx,
+                                        seal.bundle_digest(dict(files, **extras)))
             wall_min = round((time.time() - start) / 60.0, 1)
             elapsed_min = round(elapsed_fn() / 60.0, 1)
             curve.append({"round": idx - 1, "elapsed_min": elapsed_min,
                           "wall_elapsed_min": wall_min, "clock": "eligible", "final": None})
             self.log({"event": "snapshot", "round": idx - 1, "elapsed_min": elapsed_min,
-                      "wall_elapsed_min": wall_min, "clock": "eligible", "sha": sha[:12]})
+                      "wall_elapsed_min": wall_min, "clock": "eligible", "sha": sha[:12],
+                      "chain": self.seal_chain})
             return idx
 
 
