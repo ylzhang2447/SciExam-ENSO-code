@@ -8,7 +8,8 @@ A submission folder holds
     final/              the final checkpoint (the one the leaderboard ranks)
     checkpoints/        every checkpoint, round_NN/
     logs/               run_meta.json, summary.json, trajectory.jsonl, diagnostics_audit.json,
-                        agent_output.txt and proxy/egress.jsonl from the run's results folder
+                        agent_output.txt, proxy/egress.jsonl and resources.jsonl from the run's
+                        results folder
     MANIFEST.sha256     sha256 of every other file
 
 The results folder must still match the seal the run wrote when it ended (agent/seal.py): a
@@ -31,7 +32,7 @@ from ..agent import seal as SEAL
 FORMAT = 1
 MODEL_FILES = ("model.py", "params.json", "model_card.md", "nondim_scales.json")
 LOG_FILES = ("run_meta.json", "summary.json", "trajectory.jsonl", "diagnostics_audit.json",
-             "agent_output.txt", "proxy/egress.jsonl", "SEAL.json")
+             "agent_output.txt", "proxy/egress.jsonl", "resources.jsonl", "SEAL.json")
 REQUIRED_LOGS = ("run_meta.json", "summary.json", "trajectory.jsonl", "SEAL.json")
 AGENTS_DIR = Path(__file__).resolve().parents[2] / "agents"
 SECRET_PATTERNS = [
@@ -204,6 +205,8 @@ def package(run_dir, out, system_name=None, contact=None, offset=None, runs_atte
 
 
 def _comparable(meta, arm):
+    if arm.get("declared"):
+        return False
     if meta.get("budget_s") != float(arm["budget"]["eligible_seconds"]):
         return False
     r = meta.get("reasoning") or {}

@@ -28,6 +28,7 @@ from pathlib import Path
 
 from ..agent import config as C
 from ..agent import prompts as P
+from ..agent import resources as R
 from ..agent import seal as SEAL
 from . import package as PK
 
@@ -83,16 +84,15 @@ def check_manifest(sub, rep):
 
 def released_template(arm):
     """The released arm this configuration must follow: the same key if the paper ran it, else
-    the released ranked arm of the same scaffold and route."""
+    the paper's latest run on its route (see agent/newmodel.py), which `add-model` copies."""
+    from ..agent import newmodel as NM
     same = PK.AGENTS_DIR / ("%s.yaml" % arm["arm"])
     if same.exists():
         return C.load_arm(same)
-    for p in sorted(PK.AGENTS_DIR.glob("*.yaml")):
-        t = C.load_arm(p)
-        if (not t.get("condition") and t["scaffold"]["name"] == arm["scaffold"]["name"]
-                and t["route"]["kind"] == arm["route"]["kind"]):
-            return t
-    return None
+    try:
+        return C.load_arm(PK.AGENTS_DIR / ("%s.yaml" % NM.template_for(arm)))
+    except (KeyError, OSError, C.ConfigError):
+        return None
 
 
 def check_config(sub, rep):
@@ -110,7 +110,12 @@ def check_config(sub, rep):
                 % (arm["scaffold"]["name"], arm["route"]["kind"]))
         return arm
     diff = [k for k in PROTOCOL_KEYS if _get(arm, k) != _get(t, k)]
-    if diff:
+    declared = (arm.get("declared") or {}).get("context_tokens")
+    ctx = "context.working_context_tokens"
+    if diff == [ctx] and declared == _get(arm, ctx):
+        rep.add("arm configuration", "declared", "protocol of the released arm %s, with the model's "
+                "context window of %d tokens instead of %d" % (t["arm"], declared, _get(t, ctx)))
+    elif diff:
         rep.add("arm configuration", "fail", "differs from the released arm %s in %s"
                 % (t["arm"], ", ".join(diff)))
     else:
@@ -168,12 +173,12 @@ def check_run(sub, arm, rep):
     custom = meta.get("custom") or {}
     allow = meta.get("network_allowlist")
     if allow == paper:
-        rep.add("network", "pass", "the paper's allowlist: %s" % ", ".join(paper))
+        rep.add("network", "pass", "the official leaderboard's allowlist: %s" % ", ".join(paper))
     elif custom.get("network") or custom.get("extra_allowed_hosts"):
         rep.add("network", "declared", "custom: %s" % ", ".join(
             "%s %s" % (k, v) for k, v in custom.items() if k != "comparable_with_paper"))
     else:
-        rep.add("network", "fail", "allowlist %s differs from the paper's %s and was not declared"
+        rep.add("network", "fail", "allowlist %s differs from the official leaderboard's %s and was not declared"
                 % (allow, paper))
 
     re_ = meta.get("reasoning") or {}
@@ -194,6 +199,55 @@ def check_run(sub, arm, rep):
         rep.add("run completion", "fail", "eligible time %s s is short of the budget %s s" % (el, b))
     else:
         rep.add("run completion", "pass", "complete after %.0f s of eligible time" % el)
+
+
+def check_resources(sub, rep):
+    """The agent ran with the spec's cap, on a host that held every agent running at once, and
+    the samples show neither a full disk nor gaps. Out-of-memory kills inside the cap are the
+    agent's own doing and are reported, not failed."""
+    try:
+        res = json.loads((sub / "logs" / "run_meta.json").read_text()).get("resources")
+    except (OSError, ValueError):
+        res = None
+    if not res:
+        rep.add("compute", "fail", "run_meta records no compute: run with this harness, which caps "
+                "the agent container and records it")
+        return
+    want = {k: R.spec()[k] for k in ("cpus", "memory_gb")}
+    got = {k: (res.get("spec") or {}).get(k) for k in want}
+    n = res.get("agents_at_once") or 1
+    if got != want:
+        rep.add("compute", "fail", "agent cap %s, the spec is %s" % (got, want))
+    elif R.fit(res.get("host")) < n:
+        h = res.get("host") or {}
+        rep.add("compute", "fail", "%d agent(s) at once on a host of %s CPUs and %s GB, which holds %d"
+                % (n, h.get("cpus"), h.get("memory_gb"), R.fit(h)))
+    else:
+        rep.add("compute", "pass", "%d CPUs and %d GB per agent, %d agent(s) at once on a host of "
+                "%d CPUs and %.1f GB" % (want["cpus"], want["memory_gb"], n, res["host"]["cpus"],
+                                         res["host"]["memory_gb"]))
+    try:
+        lines = (sub / "logs" / R.SAMPLE_FILE).read_text().splitlines()
+    except OSError:
+        rep.add("compute samples", "fail", "logs/%s is missing" % R.SAMPLE_FILE)
+        return
+    s = R.summarize(lines)
+    try:
+        el = json.loads((sub / "logs" / "summary.json").read_text())["clock"]["eligible_elapsed_s"]
+    except (OSError, ValueError, KeyError, TypeError):
+        el = 0
+    detail = ("%d samples, peak CPU %s%%, peak memory %s%% of the cap, lowest free disk %s GB, "
+              "%s out-of-memory kill(s)" % (s["samples"], s["peak_cpu_pct"], s["peak_memory_pct"],
+                                           s["min_disk_free_gb"], s["oom_kills"]))
+    if not s["samples"]:
+        rep.add("compute samples", "fail", "no samples were recorded")
+    elif s["samples"] < 0.5 * float(el or 0) / R.SAMPLE_S:
+        rep.add("compute samples", "fail", "%d samples over %.0f s of eligible time: the sampling "
+                "stopped or the run's records are incomplete" % (s["samples"], el))
+    elif s["min_disk_free_gb"] is not None and s["min_disk_free_gb"] < 1:
+        rep.add("compute samples", "fail", "the disk nearly filled during the run: " + detail)
+    else:
+        rep.add("compute samples", "pass", detail)
 
 
 def check_checkpoints(sub, rep):
@@ -311,6 +365,7 @@ def verify(sub, data_root, grade=True, image=None, timeout=3600, in_process=Fals
             "every checkpoint and log matches the seal written when the run ended")
     arm = check_config(sub, rep)
     check_run(sub, arm, rep)
+    check_resources(sub, rep)
     check_checkpoints(sub, rep)
     check_egress(sub, rep)
     scores = None

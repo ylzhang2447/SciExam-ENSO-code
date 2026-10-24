@@ -19,7 +19,7 @@ def cmd_package_run(a):
     print("system %s, contact %s, run %d of this system" % (md["system_name"], md["contact"],
                                                             md["runs_attempted"]))
     if not md["comparable_with_paper"]:
-        print("this run changed the paper's settings, so it is ranked apart from the paper's systems")
+        print("this run changed the official leaderboard's settings, so it is ranked apart from it")
     print("check it before you submit:  sciexam verify-submission %s" % a.out)
     return 0
 

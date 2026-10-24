@@ -167,8 +167,8 @@ your copy against the one the agents used and places it in a task folder.
 | | grading and regrading | rerunning an agent |
 |---|---|---|
 | software | Python 3.10 or newer, Docker, git | the same, plus your own model credentials (`.env`, see `.env.example`) |
-| CPU and memory | each grading job starts two containers of 2 CPUs, each capped at 4 GB, so plan 4 CPUs and up to 8 GB per job (`--jobs`) | the agent container, an allowlist proxy (256 MB) and, for OpenRouter arms, a LiteLLM gateway. The agent container has no CPU or memory cap. We suggest 2 CPUs and 4 GB per concurrent run, which is a planning figure, not a measured requirement |
-| disk | about 1 GB for the grading image and 20 MB for the dataset | the agent and gateway images of the arms you run, and the run folders |
+| CPU and memory | each grading job starts two containers of 2 CPUs, each capped at 4 GB, so plan 4 CPUs and up to 8 GB per job (`--jobs`) | each agent container is capped at 5 CPUs and 10 GB (see Compute below), so Docker needs 5 CPUs and 10 GB per agent running at once, plus an allowlist proxy (256 MB) and, for OpenRouter arms, a LiteLLM gateway |
+| disk | about 1 GB for the grading image and 20 MB for the dataset | the agent and gateway images of the arms you run, and the run folders: a run checks for 5 GB plus 2 GB per agent free before it starts |
 | network | only to fetch packages and images once | the model endpoint of the arm's route and PyPI, through the allowlist proxy |
 | time | see the table above | 6 h of eligible time per run. Provider pauses are credited, so the wall time can reach 18 h (`max_wall_multiple` 3) |
 | cost | none | every run is billed to, or counted against, your own account |
@@ -182,6 +182,20 @@ records, with about 6 min per model instead of under 1 min, and GPT-6 Astra took
 default 3600 s limit. Pass `--timeout 14400` there. `SCIEXAM_PLATFORM` overrides
 the platform, at the cost of exactness and, for the grading image, of the pinned hashes. Windows
 with WSL 2 and Docker has not been tested.
+
+
+### Compute
+
+The formal runs shared one host of 16 vCPUs and 30 GB among at most three agents at a time, with
+no cap on the agent container. Each agent's share of that host is the spec: every agent container
+runs with `--cpus 5 --memory 10g`, so running several agents at once gives each the same compute on
+any machine. Before a run starts, Docker's CPUs and memory must hold one cap for each agent running
+at once (the formal host holds three, a laptop with 8 CPUs and 16 GB holds one), and the disk of the
+run folders must have room. On Docker Desktop, raise its CPUs and memory in Settings > Resources.
+The interactive setup runs as many agents at once as the machine holds, up to three. During a run
+`results/resources.jsonl` samples the agent container (CPU, memory, processes) and the free disk
+every minute and ends with the count of out-of-memory kills in the container. `run_meta.json`
+records the spec, the host and how many agents ran at once, and the seal covers both.
 
 ## Rerunning the benchmark
 
@@ -210,21 +224,50 @@ where the final model would rank next to the released final models and the refer
 The paper graded each released run under its stated convention (`runs.csv` column
 `calendar_offset`).
 
-### Evaluating your own agent
+### Evaluating a model the paper did not run
 
-The twelve files in `agents/` are the configurations of the paper's systems. To evaluate another
-model, copy the configuration closest to it and change only the model:
+```
+sciexam add-model --route openrouter --model qwen/qwen3-coder
+sciexam add-model --route local --model llama-4-70b --api-base http://localhost:8000/v1 \
+    --context-tokens 131072 --name "Llama 4 70B"
+sciexam run-agent --agent openrouter:qwen/qwen3-coder --dry-run     # adds the model on first use
+```
 
-* a model on OpenRouter: copy `agents/kimi.yaml`, set `arm`, `display_name`, `route.model_alias`,
-  `route.model_id` and `route.provider_order`, and delete `run_id` and `campaign_id`. The
-  scaffold (Claude Code through the LiteLLM gateway), the tool envelope, the context policy and
-  the lifecycle stay those of the paper's gateway systems.
-* a Claude, OpenAI or Google model on its own subscription client: copy `agents/fable51.yaml`,
-  `agents/gpt55.yaml` or `agents/gemini38.yaml` and set `route.model_id`. A newer client version
-  also needs `scaffold.version` and `scaffold.binary_sha256`, which the image build checks.
+`add-model` writes an arm configuration for the new model from the paper's latest run on its route
+and changes only the model, so the run follows the paper's protocol (budget, lifecycle, tool
+envelope, network and context policy) and its submission passes the protocol check. The interactive
+setup offers the same as "+ add a model" at the end of its agent list. Configurations are kept in
+`~/.cache/sciexam/agents` (or `SCIEXAM_AGENTS`), and `list-agents` marks them "added".
 
-`sciexam run-agent --agent your.yaml --dry-run` shows the resulting setup before anything starts.
-Keep the budget, lifecycle and tool envelope unchanged for results comparable with the paper.
+| route | the model is reached through | template |
+|---|---|---|
+| `openrouter` | OpenRouter, via the LiteLLM gateway (`OPENROUTER_API_KEY`). The id is checked against OpenRouter's public model list. No provider is pinned, unlike the paper's runs | DeepSeek V4.1 Flash |
+| `claude` | the Claude Code subscription client | Claude Fable 5.1 |
+| `codex` | the Codex subscription client | GPT-6 Astra |
+| `antigravity` | the Antigravity client | Gemini 3.8 Flash |
+| `local` | any OpenAI-compatible endpoint (vLLM, Ollama, a lab server), via the LiteLLM gateway. An endpoint on this machine is reached as `host.docker.internal`; `LOCAL_MODEL_API_KEY` is passed if the server needs a key | DeepSeek V4.1 Flash |
+
+Two checks guard the gateway routes, where a model the paper did not run may behave differently
+from the paper's:
+
+* Context window. The paper's runs compact their context at 200,000 tokens. On the OpenRouter
+  route the model's window is read from OpenRouter, and on the local route `--context-tokens` gives
+  it. A window smaller than 200,000 tokens sets the compaction threshold to 80% of it and is
+  recorded under `declared` in the configuration: the run is valid, ranked apart from the paper,
+  and its leaderboard name says so ("Llama 4 70B (131k context)").
+* Tool calls. The agent acts only through tool calls, which LiteLLM translates for the model but
+  which the model itself must make. Before the budget starts, `run-agent` sends one tool-call
+  request through the gateway and stops, with advice, if the model answers without one. Serve a
+  local model with tool calling on (for vLLM, `--enable-auto-tool-choice` and the model's
+  `--tool-call-parser`; for Ollama, a model with the tools capability).
+
+The harness itself does not change for these routes: they run Claude Code through the LiteLLM
+gateway exactly as the paper's OpenRouter systems did. A local server has no provider quota, so its
+errors count as failures, and a slower model makes fewer turns in the same budget.
+
+A model that needs a newer client than the template pins needs `scaffold.version` and
+`scaffold.binary_sha256` updated in its configuration, which the image build checks; that changes
+the protocol, and the submission check then reports it.
 
 ### Interactive setup
 
@@ -233,19 +276,23 @@ sciexam run-agent
 ```
 
 Without `--agent`, on a terminal, `run-agent` asks for the run one step at a time instead of taking
-flags: the mode (dry run, smoke run or full run), the agents, the reasoning effort of each, the
-settings (the paper's, or a custom run time and network), how many agents run at once, and the task
-data and paper of a live run. It then shows which credentials are set (never their values), a
-summary, and the equivalent command line for scripts, and starts only when you choose start; for a
-live run the default is to go back. Arrow keys move, Enter chooses, Space ticks agents, the left
+flags: how to run, the agents, and the task data and paper. How to run is default, the official
+leaderboard's settings (its reasoning effort, run time and network, up to 3 agents at a time), or
+customize, which asks for the reasoning effort of each agent, the run time, the network and how
+many agents run at once. Before it offers to start, it runs the checks of
+`--dry-run` (the dataset, Docker, the task data and paper) and shows which credentials are set
+(never their values), then a summary and the equivalent command line for scripts. It starts only
+when you choose the full run, or a 15-minute smoke run of the same setup; the default is to go
+back. Arrow keys move, Enter chooses, Space ticks agents, the left
 arrow or `b` goes back a step and `q` quits. On a terminal without raw key input, or with
 `NO_COLOR` or `SCIEXAM_PLAIN` set, the same questions are numbered prompts.
 
 The setup that was started is saved to `sciexam_runs/last_setup.json`. The next start offers to
-repeat it, to run it as the full run (after a smoke or dry run), or to start new. A remembered
-setup opens at the summary, with every earlier step one step back and its answers kept.
+repeat it, or to start new, which keeps the data paths and the contact. A repeated setup opens at
+the summary, with every earlier step one step back and its answers kept, so the full run follows a
+smoke run in two keys.
 
-Custom settings map to these flags, each recorded as not comparable with the paper:
+Custom settings map to these flags, each recorded as not comparable with the official leaderboard:
 
 | setting | flag |
 |---|---|
@@ -344,6 +391,8 @@ contains one of your credential values or a common secret pattern.
 | scaffold and model, lifecycle | the run used the configuration in `agent.yaml` and the formal lifecycle (no smoke runs) |
 | budget, network, reasoning effort | the paper's settings, or `decl` when the run recorded a change (`--hours`, `--network`, `--allow-host`, `--effort`) |
 | run completion | the run finished its full eligible budget |
+| compute | the agent container had the spec's cap (5 CPUs, 10 GB), on a host that held every agent running at once |
+| compute samples | `resources.jsonl` sampled the run throughout, and the disk never came within 1 GB of full. Peak CPU and memory and any out-of-memory kills inside the cap are reported |
 | checkpoints | one checkpoint per snapshot event, and `final/` is the last one |
 | egress log | every connection went to a host on the allowlist |
 | regrade | the final model scores in the sandbox, at the stated calendar offset or at both 0 and -1 (and matches `claimed_scores` in `metadata.json`, if given) |
