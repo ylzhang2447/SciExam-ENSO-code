@@ -75,9 +75,8 @@ class Machine(S.System):
         self.calls.append(("open", str(target)))
         return True
 
-    def sha256(self, path):
-        from sciexam.prepare import paper as P
-        return P.SHA256 if b"formal" in Path(path).read_bytes() else "0" * 64
+    def same_article(self, path):
+        return b"formal" in Path(path).read_bytes()
 
     def downloads(self):
         d = H.home().parent / "Downloads"
@@ -233,7 +232,7 @@ def test_one_click_the_download_is_picked_up_by_itself():
     lines = []
     it = iter(["1"])                              # download: the page opens, the user clicks
     st = S.Start(ui=Plain(ask=lambda q: next(it), out=lines.append), system=m)
-    m.sha256 = lambda p: "0" * 64                 # nothing in Downloads matches before the click
+    m.same_article = lambda p: False              # nothing in Downloads matches before the click
     with pytest.raises(StopIteration):           # paper done, the accounts step asks next
         st.run()
     from sciexam.prepare import paper as P

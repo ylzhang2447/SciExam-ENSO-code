@@ -66,9 +66,9 @@ class System:
         except OSError:
             return False
 
-    def sha256(self, path):
+    def same_article(self, path):
         from ..prepare import paper as P
-        return P.sha256(path)
+        return P.same_article(path)
 
     def downloads(self):
         """The browser's download folder, where a PDF lands by default."""
@@ -339,7 +339,7 @@ class Start:
         if (folder / PAPER_FILE).exists():
             return
         pdf = self._paper_candidate()
-        if pdf and self.sys.sha256(pdf) == P.SHA256:
+        if pdf and self.sys.same_article(pdf):
             self._adopt(pdf)
             self.last = "found %s in the paper folder: the PDF of the formal runs" % pdf.name
             return
@@ -350,7 +350,7 @@ class Start:
         except OSError:
             return
         for p in sorted(pdfs, key=lambda p: p.stat().st_mtime, reverse=True):
-            if self.sys.sha256(p) == P.SHA256:
+            if self.sys.same_article(p):
                 folder.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(p, folder / PAPER_FILE)
                 self.last = "found %s in %s: the PDF of the formal runs, copied" % (p.name, dl)

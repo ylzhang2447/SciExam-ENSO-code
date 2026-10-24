@@ -334,6 +334,8 @@ def dry_run(arm, a, root):
         rows, excluded, problems = T.plan(root / "task", a.task_data, a.paper)
         for row in rows:
             mark = ("same bytes as the formal runs" if row["same_as_formal"]
+                    else "the formal article, with the publisher's download stamp"
+                    if row.get("same_article")
                     else "DIFFERS from the formal runs (formal %s)" % (row["formal_sha256"] or "?")[:16])
             print("  %-66s %s  %s" % (row["path"], row["sha256"][:16], mark))
         print("  submission/processed/  (empty folders, created by the harness)")
