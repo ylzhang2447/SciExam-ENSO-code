@@ -28,6 +28,7 @@ import sciexam
 
 from ..agent import config as C
 from ..agent import seal as SEAL
+from ..agent import task as T
 
 FORMAT = 1
 MODEL_FILES = ("model.py", "params.json", "model_card.md", "nondim_scales.json")
@@ -184,6 +185,8 @@ def package(run_dir, out, system_name=None, contact=None, offset=None, runs_atte
             "route": (meta.get("route") or {}).get("kind"),
             "reasoning_effort": (meta.get("reasoning") or {}).get("effort"),
             "comparable_with_paper": _comparable(meta, C.load_arm(cfg)),
+            "reference_paper": _inputs(meta)[0],
+            "task_data": _inputs(meta)[1],
             "custom": meta.get("custom"),
             "budget_s": meta.get("budget_s"),
             "smoke": meta.get("smoke"),
@@ -204,8 +207,19 @@ def package(run_dir, out, system_name=None, contact=None, offset=None, runs_atte
         raise
 
 
+def _inputs(meta):
+    """The paper and the observation files the run gave the agent (from its task files when the
+    run predates these records)."""
+    rows = meta.get("task_files") or []
+    return (meta.get("reference_paper") or T.reference_paper(rows),
+            meta.get("task_data") or T.task_data(rows))
+
+
 def _comparable(meta, arm):
     if arm.get("declared"):
+        return False
+    paper, data = _inputs(meta)
+    if paper.get("kind") != "formal_pdf" or data.get("kind") != "formal":
         return False
     if meta.get("budget_s") != float(arm["budget"]["eligible_seconds"]):
         return False

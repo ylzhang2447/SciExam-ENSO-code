@@ -15,6 +15,7 @@ import shutil
 import sys
 from pathlib import Path
 
+from .. import home as H
 from . import config as C
 from . import custom as X
 from . import effort as E
@@ -24,8 +25,15 @@ from .tui import Abort, Back, Plain, backend
 
 # The last setup that was started, so the next run (the full run after a smoke run, say) can
 # repeat it without answering every question again. Kept next to the run folders.
-SETUP_FILE = Path("sciexam_runs") / "last_setup.json"
-R_RUNS = Path("sciexam_runs")             # where the run folders go, for the disk check
+def _setup_file():
+    return H.runs() / "last_setup.json"
+
+
+def _installed_paper():
+    """The paper fetch-paper (or sciexam start) installed, when there is one."""
+    from .provenance import PAPER_FILE
+    p = H.papers_parent() / "papers" / PAPER_FILE
+    return str(p) if p.exists() else ""
 SAVED_KEYS = ("mode", "levels", "custom", "hours", "network", "net_choice", "hosts", "parallel",
               "task_data", "paper", "contact")
 
@@ -286,13 +294,13 @@ class Wizard:
                 if sub == 0:
                     self.s["task_data"] = self.ui.text(
                         "Folder with the four raw data files (sciexam prepare-data --keep-raw writes OUT/raw)",
-                        self.s.get("task_data") or "prepared/raw",
+                        self.s.get("task_data") or str(H.prepared() / "raw"),
                         lambda v: None if Path(v).is_dir() else "no such folder: %s" % v)
                     sub = 1
                 elif sub == 1:
                     self.s["paper"] = self.ui.text(
                         "Path to the Jin (1997) PDF (sciexam fetch-paper explains how to get it)",
-                        self.s.get("paper") or "",
+                        self.s.get("paper") or _installed_paper(),
                         lambda v: None if v and Path(v).is_file() else "no such file: %s" % (v or "(empty)"))
                     sub = 2
                 else:
@@ -362,12 +370,14 @@ class Wizard:
         return self.command()[2:]
 
     # ---- driver -----------------------------------------------------------------------------
-    def run(self, env_file=".env", setup_file=SETUP_FILE):
+    def run(self, env_file=None, setup_file=None, banner=True):
+        env_file, setup_file = env_file or H.env_file(), setup_file or _setup_file()
         self.env_file = env_file
         self.rows = self.arms()
         self.saved = load_setup(setup_file, [a["arm"] for _, a in self.rows])
         self.jump = False
-        self.ui.banner("Set up a run. Nothing starts until you choose start at the end.")
+        if banner:
+            self.ui.banner("Set up a run. Nothing starts until you choose start at the end.")
         steps = [self.step_start, self.step_settings, self.step_agents, self.step_effort,
                  self.step_runtime, self.step_parallel, self.step_data, self.step_review]
         history, k = [], 0
@@ -425,7 +435,7 @@ class Wizard:
             argv += ["--paper", s["paper"]]
         if s.get("contact"):
             argv += ["--contact", s["contact"]]
-        if self.env_file != ".env":
+        if self.env_file != H.env_file():
             argv += ["--env-file", self.env_file]
         return argv
 
@@ -476,7 +486,7 @@ def setup_checks(s):
                 "holds %d agent(s) at once, not %d: give Docker more CPUs or memory "
                 "(Docker Desktop: Settings > Resources) or run fewer at once" % (R.fit(h), n)))
     n = s.get("parallel") or 1
-    free, need = R.disk_free_gb(R_RUNS), R.disk_needed_gb(n)
+    free, need = R.disk_free_gb(H.runs()), R.disk_needed_gb(n)
     out.append(("disk", free >= need, "%.1f GB free, %d GB needed" % (free, need)))
     if have:
         probs = T.plan(root / "task", s.get("task_data"), s.get("paper"))[2]
@@ -492,7 +502,7 @@ class _Again(Exception):
     """Ask the same step again."""
 
 
-def interactive_argv(env_file=".env"):
+def interactive_argv(env_file=None):
     """Run the setup on this terminal and return the run-agent arguments, or None."""
     try:
         return Wizard(NM.RELEASED_DIR).run(env_file=env_file)

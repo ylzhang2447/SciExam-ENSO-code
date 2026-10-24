@@ -19,6 +19,7 @@ from sciexam.agent import effort as E
 from sciexam.agent import ledger as LG
 from sciexam.agent import prompts as P
 from sciexam.agent import resources as R
+from sciexam.agent import task as T
 from sciexam.agent import seal as SEAL
 from sciexam.submission import package as PK
 from sciexam.submission import verify as V
@@ -40,8 +41,22 @@ pytestmark = pytest.mark.skipif(_root() is None, reason="dataset not downloaded"
 FORMAL_HOST = {"cpus": 16, "memory_gb": 30.81, "docker": "29.7", "os": "Ubuntu", "arch": "x86_64"}
 
 
+def task_rows(paper="formal", data="formal"):
+    """run_meta task_files as run-agent records them, for the formal inputs or a variant."""
+    from sciexam.agent.provenance import TASK_FILES_SHA256
+    rows = []
+    for rel, sha in TASK_FILES_SHA256.items():
+        got = sha
+        if rel.endswith(".pdf") and paper == "other":
+            got = "1" * 64
+        if rel.startswith("data/") and data == "rebuilt" and "ersst" in rel:
+            got = "2" * 64
+        rows.append({"path": rel, "sha256": got, "formal_sha256": sha, "same_as_formal": got == sha})
+    return rows
+
+
 def make_run(tmp, arm=None, budget=None, smoke=False, n=3, egress_extra=None, host=FORMAL_HOST,
-             at_once=3, samples=None, disk=40.0):
+             at_once=3, samples=None, disk=40.0, paper="formal", data="formal"):
     arm = arm or C.load_arm(AGENTS / "kimi.yaml")
     res = tmp / "run" / "results"
     ckpts = sorted((_root() / "models" / "checkpoints" / "kimi-k3").glob("round_*"))[-n:]
@@ -58,7 +73,8 @@ def make_run(tmp, arm=None, budget=None, smoke=False, n=3, egress_extra=None, ho
             "prompt_sha256": P.prompt_digests(), "custom": arm.get("custom"),
             "submission": {"system_name": LG.system_name(arm, b), "contact": "tester@example.org",
                            "runs_attempted": 2},
-            "resources": dict(R.record(host, at_once, tmp), disk_free_gb_at_start=disk)}
+            "resources": dict(R.record(host, at_once, tmp), disk_free_gb_at_start=disk),
+            "task_files": task_rows(paper, data)}
     (res / "run_meta.json").write_text(json.dumps(meta))
     k = int(b // R.SAMPLE_S) if samples is None else samples
     rows = [{"t": t, "cpu": "%.1f%%" % (20 + t % 50), "memory_pct": "3.0%", "disk_free_gb": disk}
@@ -265,3 +281,19 @@ def test_compute_is_checked_against_the_spec(tmp_path):
         rep = V.Report()
         V.check_resources(d / "sub", rep)
         assert statuses({"checks": rep.checks})["compute samples"] == "fail", name
+
+
+def test_the_paper_and_the_data_given_to_the_agent_are_checked(tmp_path):
+    from sciexam.submission import verify as V
+    for name, kw, status, comparable in [
+            ("formal", {}, "pass", True),
+            ("other", {"paper": "other"}, "declared", False),
+            ("rebuilt", {"data": "rebuilt"}, "declared", False)]:
+        d = tmp_path / name
+        d.mkdir()
+        md = pack(d, make_run(d, **kw))
+        assert md["comparable_with_paper"] is comparable, name
+        rep = V.Report()
+        V.check_task_files(d / "sub", rep)
+        assert statuses({"checks": rep.checks})["task files"] == status, (name, rep.checks)
+    assert md["task_data"]["kind"] == "rebuilt"

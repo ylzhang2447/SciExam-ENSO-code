@@ -97,6 +97,18 @@ def cmd_prepare_data(a):
     return 0 if ok_all else 1
 
 
+def cmd_fetch_data(a):
+    import sys
+    from . import taskdata as TD
+    progress = None
+    if sys.stdout.isatty():
+        from ..agent.tui import bar
+        def progress(done, total):
+            sys.stdout.write("\r  " + bar(done, total) + ("\n" if done >= total else ""))
+            sys.stdout.flush()
+    return 0 if TD.fetch(a.out, progress=progress) else 1
+
+
 def cmd_fetch_paper(a):
     from ..dataset import default_root
     from . import paper as P
@@ -110,11 +122,12 @@ def cmd_fetch_paper(a):
 
 
 def register(sub):
+    from .. import home as H
     p = sub.add_parser("prepare-data",
                        help="download the raw NOAA observations, rebuild the five indices and compare with the dataset")
-    p.add_argument("--out", default="sciexam_prepare",
+    p.add_argument("--out", default=str(H.prepared()),
                    help="output folder: raw/ (downloads), processed/indices.csv, comparison.json "
-                        "(default ./sciexam_prepare)")
+                        "(default %s)" % H.prepared())
     p.add_argument("--keep-raw", action="store_true", help="keep the downloaded netCDF files in OUT/raw")
     p.add_argument("--check-only", action="store_true",
                    help="do not download: rebuild and compare from the raw files already in OUT/raw "
@@ -127,11 +140,18 @@ def register(sub):
     p.add_argument("--jobs", type=int, default=3, help="parallel OPeNDAP requests (default 3)")
     p.set_defaults(fn=cmd_prepare_data)
 
+    p = sub.add_parser("fetch-data", help="download the four observation files of the formal runs "
+                                          "(one archive, checked by sha256)")
+    p.add_argument("--out", default=str(H.prepared() / "raw"),
+                   help="folder that receives the four files (default %s), the --task-data of "
+                        "run-agent" % (H.prepared() / "raw"))
+    p.set_defaults(fn=cmd_fetch_data)
+
     p = sub.add_parser("fetch-paper", help="how to obtain the reference paper given to the agents, and install a copy")
     p.add_argument("--file", help="a downloaded PDF: check its sha256 and copy it into the task folder")
-    p.add_argument("--task-dir", default="task",
-                   help="task folder that receives papers/<name>.pdf (default ./task). Must lie outside "
-                        "the dataset and the code")
+    p.add_argument("--task-dir", default=str(H.papers_parent()),
+                   help="task folder that receives papers/<name>.pdf (default %s). Must lie outside "
+                        "the dataset and the code" % H.papers_parent())
     p.add_argument("--accept-different", action="store_true",
                    help="install the PDF even when its sha256 differs from the recorded one")
     p.set_defaults(fn=cmd_fetch_paper)

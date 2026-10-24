@@ -54,7 +54,8 @@ class ModelError(ValueError):
 
 
 def user_dir():
-    return Path(os.environ.get("SCIEXAM_AGENTS") or Path.home() / ".cache" / "sciexam" / "agents")
+    from .. import home
+    return Path(os.environ.get("SCIEXAM_AGENTS") or home.state() / "agents")
 
 
 def agent_dirs():
