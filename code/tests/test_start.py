@@ -85,7 +85,12 @@ class Machine(S.System):
         return d
 
     def sleep(self, s):
-        pass
+        if getattr(self, "arrives", None):         # the browser finishes the download
+            self.arrives[0].write_bytes(self.arrives[1])
+            self.arrives = None
+
+    def now(self):
+        return 1e9
 
 
 def drive(answers, machine):
@@ -105,7 +110,7 @@ def test_from_nothing_to_a_run(tmp_path, home):
         "1",                                   # Docker running: open it
         "1",                                   # dataset: copy it
         "1",                                   # raw data: download it
-        "3", str(pdf).replace(" ", "\\ "),    # paper: already downloaded elsewhere, dragged in
+        "2", str(pdf).replace(" ", "\\ "),    # paper: already downloaded elsewhere, dragged in
         "", "sk-or-v1-test-key-1234567890",    # accounts: OpenRouter, the key (not shown)
         "",                                    # go on to the run setup
         "", "kimi", "", "", "me@example.org", "1"], m)
@@ -173,7 +178,7 @@ def test_a_pdf_saved_in_the_paper_folder_is_found_and_checked():
     m = ready_but_the_paper()
     folder = H.papers_parent() / "papers"
     lines = []
-    it = iter(["1"])                              # open the publisher's page
+    it = iter(["3"])                              # check again
     def answer(q):
         a = next(it, None)
         if a is None:                            # the user has saved the PDF meanwhile: check again
@@ -183,7 +188,7 @@ def test_a_pdf_saved_in_the_paper_folder_is_found_and_checked():
     with pytest.raises(Abort):
         S.Start(ui=Plain(ask=answer, out=lines.append), system=m).run()
     from sciexam.prepare import paper as P
-    assert m.calls == [("open", P.DOI_URL)]
+    assert m.calls == []
     st = S.Start(ui=Plain(ask=lambda q: (_ for _ in ()).throw(Abort("x")), out=lines.append), system=m)
     st.adopt_saved_paper()
     assert (folder / PAPER_FILE).exists() and not (folder / "jas-1997-download.pdf").exists()
@@ -210,9 +215,28 @@ def test_the_pdf_is_picked_up_from_downloads():
     (dl / "other.pdf").write_bytes(b"%PDF unrelated")
     (dl / "1520-0469(1997)054.pdf").write_bytes(b"%PDF formal")
     lines = []
-    it = iter(["2"])                              # check again, after downloading in the browser
+    it = iter(["3"])                              # check again, after downloading in the browser
     with pytest.raises(StopIteration):           # the accounts step is next
         S.Start(ui=Plain(ask=lambda q: next(it), out=lines.append), system=m).run()
     assert (H.papers_parent() / "papers" / PAPER_FILE).read_bytes() == b"%PDF formal"
     assert (dl / "1520-0469(1997)054.pdf").exists()           # the download is left where it is
     assert "found 1520-0469(1997)054.pdf in" in "\n".join(lines)
+
+
+def test_one_click_the_download_is_picked_up_by_itself():
+    m = ready_but_the_paper()
+    dl = m.downloads()
+    (dl / "old.pdf").write_bytes(b"%PDF formal")             # there before: not taken
+    import os
+    os.utime(dl / "old.pdf", (1, 1))
+    m.arrives = (dl / "1520-0469(1997)054.pdf", b"%PDF formal")
+    lines = []
+    it = iter(["1"])                              # download: the page opens, the user clicks
+    st = S.Start(ui=Plain(ask=lambda q: next(it), out=lines.append), system=m)
+    m.sha256 = lambda p: "0" * 64                 # nothing in Downloads matches before the click
+    with pytest.raises(StopIteration):           # paper done, the accounts step asks next
+        st.run()
+    from sciexam.prepare import paper as P
+    assert ("open", P.DOI_URL) in m.calls
+    assert ("paper", dl / "1520-0469(1997)054.pdf") in m.calls
+    assert "Last step: downloaded 1520-0469(1997)054.pdf" in "\n".join(lines)

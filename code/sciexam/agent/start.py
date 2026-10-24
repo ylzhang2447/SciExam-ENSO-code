@@ -74,6 +74,9 @@ class System:
         """The browser's download folder, where a PDF lands by default."""
         return Path.home() / "Downloads"
 
+    def now(self):
+        return time.time()
+
     def local_dataset(self):
         from .docker_env import repo_root
         code = repo_root()
@@ -217,13 +220,12 @@ class Start:
                      "copyright (so we may not ship it) and its site admits browsers only, so it is "
                      "the one file you download yourself:",
                      "  " + P.CITATION,
-                     "Open the publisher's page, click Download PDF (free, no account needed), "
-                     "then choose check again.",
-                     "The PDF is found in your Downloads folder or in %s, under any name." % folder],
-                    [("open page", "open the publisher's page in your browser",
-                      lambda: self._open(P.DOI_URL)),
-                     ("check", "check again (after downloading)", lambda: None),
-                     ("add", "it is somewhere else: drag it in", self._add_paper)])
+                     "Choose download: the page opens in your browser, you click Download PDF "
+                     "(free, no account needed), and the file is picked up from your Downloads "
+                     "folder by itself."],
+                    [("download", "open the page; click Download PDF there, nothing else to do",
+                      self._download_paper),
+                     ("add", "it is already downloaded somewhere: drag it in", self._add_paper)])
         if title == "disk":
             return (["Free some disk space where the runs are kept (%s), then choose check again."
                      % H.runs().resolve()], None)
@@ -267,6 +269,53 @@ class Start:
             self.ui.note("could not open %s: open it yourself" % target)
             return False
         return True
+
+    @staticmethod
+    def _pdfs(folder):
+        try:
+            return [p for p in folder.iterdir() if p.suffix.lower() == ".pdf" and p.is_file()]
+        except OSError:
+            return []
+
+    def _download_paper(self, wait_s=600, poll_s=2):
+        """Open the paper's page, then wait for a new PDF in the Downloads folder (one whose size
+        has stopped changing) and check it and put it in place."""
+        from ..prepare import paper as P
+        dl, t0 = self.sys.downloads(), self.sys.now()
+        old = {p: p.stat().st_mtime for p in self._pdfs(dl)}
+        if not self._open(P.DOI_URL):
+            return False
+        self.ui.note("waiting for the PDF in %s: click Download PDF on the page "
+                     "(Ctrl-C stops waiting)" % dl)
+        sizes = {}
+        try:
+            for _ in range(int(wait_s / poll_s)):
+                for p in self._pdfs(dl):
+                    if p in old and p.stat().st_mtime <= old[p]:
+                        continue                         # there before the page was opened
+                    size = p.stat().st_size
+                    if size and sizes.get(p) == size:    # finished: same size twice
+                        return self._take_paper(p)
+                    sizes[p] = size
+                self.sys.sleep(poll_s)
+        except KeyboardInterrupt:
+            self.ui.note("stopped waiting")
+            return None
+        self.ui.note("no PDF arrived in %d minutes" % (wait_s // 60))
+        return False
+
+    def _take_paper(self, pdf):
+        lines = []
+        rc = self.sys.install_paper(pdf, False, lines.append)
+        if rc == 1:
+            for ln in lines:
+                self.ui.note(ln)
+            if not self.ui.confirm("Use this PDF anyway (the same article, another rendering)?"):
+                return False
+            rc = self.sys.install_paper(pdf, True, lambda m: None)
+        if rc == 0:
+            self.last = "downloaded %s and put it in place" % pdf.name
+        return rc == 0
 
     def _paper_candidate(self):
         """A PDF saved in the paper folder under another name, newest first, or None."""
