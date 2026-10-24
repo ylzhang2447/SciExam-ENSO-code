@@ -18,6 +18,7 @@ from sciexam.agent import custom as X
 from sciexam.agent import effort as E
 from sciexam.agent import ledger as LG
 from sciexam.agent import prompts as P
+from sciexam.agent import resources as R
 from sciexam.agent import seal as SEAL
 from sciexam.submission import package as PK
 from sciexam.submission import verify as V
@@ -36,7 +37,11 @@ def _root():
 pytestmark = pytest.mark.skipif(_root() is None, reason="dataset not downloaded")
 
 
-def make_run(tmp, arm=None, budget=None, smoke=False, n=3, egress_extra=None):
+FORMAL_HOST = {"cpus": 16, "memory_gb": 30.81, "docker": "29.7", "os": "Ubuntu", "arch": "x86_64"}
+
+
+def make_run(tmp, arm=None, budget=None, smoke=False, n=3, egress_extra=None, host=FORMAL_HOST,
+             at_once=3, samples=None, disk=40.0):
     arm = arm or C.load_arm(AGENTS / "kimi.yaml")
     res = tmp / "run" / "results"
     ckpts = sorted((_root() / "models" / "checkpoints" / "kimi-k3").glob("round_*"))[-n:]
@@ -52,8 +57,13 @@ def make_run(tmp, arm=None, budget=None, smoke=False, n=3, egress_extra=None):
             "budget_s": b, "smoke": smoke, "network_allowlist": C.allowlist(arm),
             "prompt_sha256": P.prompt_digests(), "custom": arm.get("custom"),
             "submission": {"system_name": LG.system_name(arm, b), "contact": "tester@example.org",
-                           "runs_attempted": 2}}
+                           "runs_attempted": 2},
+            "resources": dict(R.record(host, at_once, tmp), disk_free_gb_at_start=disk)}
     (res / "run_meta.json").write_text(json.dumps(meta))
+    k = int(b // R.SAMPLE_S) if samples is None else samples
+    rows = [{"t": t, "cpu": "%.1f%%" % (20 + t % 50), "memory_pct": "3.0%", "disk_free_gb": disk}
+            for t in range(k)] + [{"t": k, "event": "end", "oom_kills": 0, "disk_free_gb": disk}]
+    (res / R.SAMPLE_FILE).write_text("".join(json.dumps(r) + "\n" for r in rows))
     (res / "summary.json").write_text(json.dumps({"status": "complete",
                                                   "clock": {"eligible_elapsed_s": b + 0.2}}))
     chain, events = SEAL.GENESIS, []
@@ -150,9 +160,9 @@ def test_connection_outside_the_allowlist_fails(tmp_path):
 
 
 def test_new_model_on_a_released_protocol(tmp_path):
-    cfg = (AGENTS / "kimi.yaml").read_text()
-    cfg = cfg.replace("arm: kimi", "arm: newmodel").replace(
-        "model_id: moonshotai/kimi-k3", "model_id: example/new-model")
+    cfg = (AGENTS / "dsflash.yaml").read_text()          # the template add-model uses
+    cfg = cfg.replace("arm: dsflash", "arm: newmodel").replace(
+        "model_id: deepseek/deepseek-v4.1-flash", "model_id: example/new-model")
     (tmp_path / "newmodel.yaml").write_text(cfg)
     arm = C.load_arm(tmp_path / "newmodel.yaml")
     pack(tmp_path, make_run(tmp_path, arm=arm), agent_config=tmp_path / "newmodel.yaml")
@@ -223,3 +233,35 @@ def test_ledger_counts_runs_of_the_same_system(tmp_path, monkeypatch):
     assert LG.record_start(E.apply(kimi, "low"), 21600, "c", tmp_path) == 1   # another system
     assert LG.record_start(kimi, 7200, "d", tmp_path) == 1
     assert LG.system_name(E.apply(kimi, "low"), 7200) == "Kimi K3 (effort low, 2 h)"
+
+
+def test_a_declared_context_window_is_ranked_apart(tmp_path, monkeypatch):
+    from sciexam.agent import newmodel as NM
+    monkeypatch.setenv("SCIEXAM_AGENTS", str(tmp_path / "agents"))
+    path = NM.make("local", "llama-4", api_base="http://localhost:8000/v1", context_tokens=32768)
+    md = pack(tmp_path, make_run(tmp_path, arm=C.load_arm(path)), agent_config=path)
+    assert md["comparable_with_paper"] is False
+    rep = V.verify(tmp_path / "sub", _root(), grade=False)
+    assert statuses(rep)["arm configuration"] == "declared"
+    assert rep["verdict"] == "consistent, declared changes", rep["checks"]
+
+
+def test_compute_is_checked_against_the_spec(tmp_path):
+    from sciexam.submission import verify as V
+    for name, kw, status in [
+            ("ok", {}, "pass"),
+            ("small", {"host": dict(FORMAL_HOST, cpus=8)}, "fail"),     # 8 CPUs cannot hold 3 agents
+            ("alone", {"host": dict(FORMAL_HOST, cpus=8, memory_gb=15.6), "at_once": 1}, "pass")]:
+        d = tmp_path / name
+        d.mkdir()
+        pack(d, make_run(d, **kw))
+        rep = V.Report()
+        V.check_resources(d / "sub", rep)
+        assert statuses({"checks": rep.checks})["compute"] == status, (name, rep.checks)
+    for name, kw in [("gaps", {"samples": 10}), ("full", {"disk": 0.4})]:
+        d = tmp_path / name
+        d.mkdir()
+        pack(d, make_run(d, **kw))
+        rep = V.Report()
+        V.check_resources(d / "sub", rep)
+        assert statuses({"checks": rep.checks})["compute samples"] == "fail", name
