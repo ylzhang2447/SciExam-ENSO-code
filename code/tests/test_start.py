@@ -79,6 +79,11 @@ class Machine(S.System):
         from sciexam.prepare import paper as P
         return P.SHA256 if b"formal" in Path(path).read_bytes() else "0" * 64
 
+    def downloads(self):
+        d = H.home().parent / "Downloads"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
     def sleep(self, s):
         pass
 
@@ -168,7 +173,7 @@ def test_a_pdf_saved_in_the_paper_folder_is_found_and_checked():
     m = ready_but_the_paper()
     folder = H.papers_parent() / "papers"
     lines = []
-    it = iter(["1", "2"])                         # open the publisher's page, open the folder
+    it = iter(["1"])                              # open the publisher's page
     def answer(q):
         a = next(it, None)
         if a is None:                            # the user has saved the PDF meanwhile: check again
@@ -178,7 +183,7 @@ def test_a_pdf_saved_in_the_paper_folder_is_found_and_checked():
     with pytest.raises(Abort):
         S.Start(ui=Plain(ask=answer, out=lines.append), system=m).run()
     from sciexam.prepare import paper as P
-    assert m.calls == [("open", P.DOI_URL), ("open", str(folder))]
+    assert m.calls == [("open", P.DOI_URL)]
     st = S.Start(ui=Plain(ask=lambda q: (_ for _ in ()).throw(Abort("x")), out=lines.append), system=m)
     st.adopt_saved_paper()
     assert (folder / PAPER_FILE).exists() and not (folder / "jas-1997-download.pdf").exists()
@@ -197,3 +202,17 @@ def test_another_rendering_can_be_used_when_asked():
     text = "\n".join(lines)
     assert "found jin.pdf, not the PDF of the formal runs" in text
     assert (folder / PAPER_FILE).exists() and "Model accounts" in text
+
+
+def test_the_pdf_is_picked_up_from_downloads():
+    m = ready_but_the_paper()
+    dl = m.downloads()
+    (dl / "other.pdf").write_bytes(b"%PDF unrelated")
+    (dl / "1520-0469(1997)054.pdf").write_bytes(b"%PDF formal")
+    lines = []
+    it = iter(["2"])                              # check again, after downloading in the browser
+    with pytest.raises(StopIteration):           # the accounts step is next
+        S.Start(ui=Plain(ask=lambda q: next(it), out=lines.append), system=m).run()
+    assert (H.papers_parent() / "papers" / PAPER_FILE).read_bytes() == b"%PDF formal"
+    assert (dl / "1520-0469(1997)054.pdf").exists()           # the download is left where it is
+    assert "found 1520-0469(1997)054.pdf in" in "\n".join(lines)

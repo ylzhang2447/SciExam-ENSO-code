@@ -70,6 +70,10 @@ class System:
         from ..prepare import paper as P
         return P.sha256(path)
 
+    def downloads(self):
+        """The browser's download folder, where a PDF lands by default."""
+        return Path.home() / "Downloads"
+
     def local_dataset(self):
         from .docker_env import repo_root
         code = repo_root()
@@ -209,16 +213,16 @@ class Start:
                         [("use it", "use %s anyway" % other.name, lambda: self._adopt(other)),
                          ("open page", "download it again from the publisher's page",
                           lambda: self._open(P.DOI_URL))])
-            return (["The agents read one paper, which we may not redistribute:",
+            return (["The agents read one paper. Its publisher holds the copyright and its site "
+                     "admits browsers only, so it is the one file you download yourself:",
                      "  " + P.CITATION,
-                     "Download the PDF from the publisher's page (your library may give access) and "
-                     "save it in this folder, under any name:",
-                     "  " + str(folder),
-                     "then choose check again: the PDF is found and checked there."],
+                     "Open the publisher's page, download the PDF (your library may give access), "
+                     "then choose check again.",
+                     "The PDF is found in your Downloads folder or in %s, under any name." % folder],
                     [("open page", "open the publisher's page in your browser",
                       lambda: self._open(P.DOI_URL)),
-                     ("open folder", "open the folder to save it in", lambda: self._open(folder)),
-                     ("add", "it is already downloaded elsewhere: drag it in", self._add_paper)])
+                     ("check", "check again (after downloading)", lambda: None),
+                     ("add", "it is somewhere else: drag it in", self._add_paper)])
         if title == "disk":
             return (["Free some disk space where the runs are kept (%s), then choose check again."
                      % H.runs().resolve()], None)
@@ -278,12 +282,29 @@ class Start:
         return True
 
     def adopt_saved_paper(self):
-        """A PDF saved in the paper folder with the formal sha256 is put in place by itself."""
+        """The PDF of the formal runs (by its sha256) is put in place by itself when it is in the
+        paper folder (moved) or among the PDFs in the Downloads folder (copied)."""
         from ..prepare import paper as P
+        folder = H.papers_parent() / "papers"
+        if (folder / PAPER_FILE).exists():
+            return
         pdf = self._paper_candidate()
         if pdf and self.sys.sha256(pdf) == P.SHA256:
             self._adopt(pdf)
             self.last = "found %s in the paper folder: the PDF of the formal runs" % pdf.name
+            return
+        dl = self.sys.downloads()
+        try:
+            pdfs = [p for p in dl.iterdir() if p.suffix.lower() == ".pdf" and p.is_file()
+                    and p.stat().st_size < 50 * 2 ** 20]
+        except OSError:
+            return
+        for p in sorted(pdfs, key=lambda p: p.stat().st_mtime, reverse=True):
+            if self.sys.sha256(p) == P.SHA256:
+                folder.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(p, folder / PAPER_FILE)
+                self.last = "found %s in %s: the PDF of the formal runs, copied" % (p.name, dl)
+                return
 
     def _add_paper(self):
         src = dropped_path(self.ui.text("Drag the PDF here (or type its path), then press Enter", ""))
@@ -326,8 +347,10 @@ class Start:
                 self.ui.note(ln)
             actions = ([] if not action else [("do it", action[0], action[1])]
                        if isinstance(action, tuple) else action)
-            opts = [(k, label) for k, label, _ in actions] + [
-                ("check", "check again"), ("leave", "leave for now (nothing is lost)")]
+            opts = [(k, label) for k, label, _ in actions]
+            if "check" not in dict(opts):
+                opts.append(("check", "check again"))
+            opts.append(("leave", "leave for now (nothing is lost)"))
             self.ui.at_start = True
             try:
                 i = self.ui.select("What now", opts, 0)
