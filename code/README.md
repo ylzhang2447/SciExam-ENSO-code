@@ -42,6 +42,8 @@ same time (five grading jobs in total), so each is a little slower alone than on
 
 | command | what it does | time |
 |---|---|---|
+| `sciexam start` | checks what a run needs, helps with what is missing, then opens the run setup (see the top-level README) | interactive |
+| `sciexam fetch-data` | downloads the four observation files of the formal runs (one 180 MB archive) and checks each sha256 | about 10 s |
 | `sciexam build-image` | builds the grading image (223 MB compressed, 949 MB on disk) | 43 s |
 | `sciexam download --local PATH` | copies and verifies the dataset | a few seconds |
 | `sciexam grade-sample DIR` | grades one submission folder | 40 to 60 s, GPT-6 Astra checkpoints up to 26 min |
@@ -51,7 +53,7 @@ same time (five grading jobs in total), so each is a little slower alone than on
 | `sciexam ablation --refit fable51/S3_affine_periodic_drift` | reruns the teacher simulation and refit of one simplified model | 20 s |
 | `sciexam figures` | regenerates the data figures (PDF and PNG) | about 3 s |
 | `sciexam prepare-data` | downloads ERSST v5, GODAS and NCEP/NCAR R1 (344 MB) and rebuilds the five indices | 4.9 min (download 292 s, processing 0.5 s) |
-| `sciexam fetch-paper --file PDF` | checks the sha256 of the reference paper and places it in a task folder | under 1 s |
+| `sciexam fetch-paper --file PDF` | checks that a PDF is the reference paper (its bytes, or its text without the publisher's download stamp) and places it in a task folder | under 1 s |
 | `sciexam run-agent --agent agents/ARM.yaml --dry-run` | assembles the agent container, task tree, prompts and network policy without starting an agent | under 0.1 s |
 | `sciexam run-agent --agent agents/ARM.yaml --net-check` | starts the arm's networks and proxy, shows that a non-allowlisted host is refused and PyPI is reachable, removes everything | about 5 s |
 | `sciexam run-agent --agent agents/ARM.yaml --hours 6` | reruns one agent for the full budget (needs your own credentials) | 6 h of eligible time |
@@ -273,6 +275,16 @@ errors count as failures, and a slower model makes fewer turns in the same budge
 A model that needs a newer client than the template pins needs `scaffold.version` and
 `scaffold.binary_sha256` updated in its configuration, which the image build checks; that changes
 the protocol, and the submission check then reports it.
+
+### Where files are kept
+
+An install made by `install.sh` keeps everything in the folder chosen at install time, whose
+launcher sets `SCIEXAM_HOME`: the dataset in `data/dataset`, the observation files in
+`data/prepared/raw`, the paper in `data/papers`, the runs in `runs/`, the ledger, the contact and
+added models in `state/`, and the credentials in `.env`. Without `SCIEXAM_HOME` the older defaults
+hold: the dataset and the state in `~/.cache/sciexam`, the runs in `./sciexam_runs`, `.env` in the
+current folder. `SCIEXAM_DATA`, `SCIEXAM_LEDGER`, `SCIEXAM_PROFILE` and `SCIEXAM_AGENTS` still
+override single paths. See `sciexam/home.py`.
 
 ### Interactive setup
 
