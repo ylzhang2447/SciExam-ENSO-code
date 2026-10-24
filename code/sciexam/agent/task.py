@@ -48,6 +48,32 @@ def plan(task_dir, data_dir=None, paper=None):
     return rows, excluded, problems
 
 
+def reference_paper(rows):
+    """Which paper the agent read: the formal PDF or another rendering of it."""
+    p = {r["path"]: r for r in rows}.get("papers/" + PAPER_FILE)
+    if not p:
+        return {"kind": "none"}
+    return {"kind": "formal_pdf" if p["same_as_formal"] else "other_pdf", "sha256": p["sha256"]}
+
+
+def task_data(rows):
+    """Whether the four observation files are those of the formal runs or rebuilt ones."""
+    data = [r for r in rows if r["path"].startswith("data/")]
+    ok = bool(data) and all(r["same_as_formal"] for r in data)
+    return {"kind": "formal" if ok else "rebuilt",
+            "differs": sorted(r["path"] for r in data if not r["same_as_formal"])}
+
+
+def inputs_note(paper, data):
+    """What a run's inputs change from the formal runs, for its leaderboard name."""
+    notes = []
+    if paper.get("kind") == "other_pdf":
+        notes.append("other PDF")
+    if data.get("kind") == "rebuilt":
+        notes.append("rebuilt data")
+    return notes
+
+
 def install(rows, workspace):
     """Copy the planned files into the workspace (after it was cleared)."""
     ws = Path(workspace)

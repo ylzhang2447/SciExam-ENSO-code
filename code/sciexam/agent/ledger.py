@@ -51,15 +51,19 @@ def save_contact(contact):
         pass
 
 
-def signature(arm, budget_s):
-    """What makes two runs the same system."""
-    return {"arm": arm["arm"], "model_id": arm["route"]["model_id"],
-            "effort": arm["reasoning"]["effort"], "budget_s": float(budget_s),
-            "context": arm["context"]["working_context_tokens"],
-            "custom": {k: v for k, v in (arm.get("custom") or {}).items() if k != "comparable_with_paper"}}
+def signature(arm, budget_s, inputs=()):
+    """What makes two runs the same system. ``inputs`` names inputs that differ from the formal
+    runs (task.inputs_note: another PDF, rebuilt data)."""
+    sig = {"arm": arm["arm"], "model_id": arm["route"]["model_id"],
+           "effort": arm["reasoning"]["effort"], "budget_s": float(budget_s),
+           "context": arm["context"]["working_context_tokens"],
+           "custom": {k: v for k, v in (arm.get("custom") or {}).items() if k != "comparable_with_paper"}}
+    if inputs:
+        sig["inputs"] = sorted(inputs)
+    return sig
 
 
-def system_name(arm, budget_s):
+def system_name(arm, budget_s, inputs=()):
     """The leaderboard name: the display name, and what differs from the paper's run."""
     name = arm.get("display_name") or arm["arm"]
     notes = []
@@ -76,12 +80,13 @@ def system_name(arm, budget_s):
         notes.append("no PyPI")
     if c.get("extra_allowed_hosts"):
         notes.append("extra hosts")
+    notes += list(inputs)
     return name + (" (%s)" % ", ".join(notes) if notes else "")
 
 
-def record_start(arm, budget_s, run_key, workdir):
+def record_start(arm, budget_s, run_key, workdir, inputs=()):
     """Enter a full run in the ledger and return how many runs of this system it now holds."""
-    sig = signature(arm, budget_s)
+    sig = signature(arm, budget_s, inputs)
     entry = {"run_key": run_key, "workdir": str(workdir), "started_epoch": int(time.time()),
              "signature": sig}
     p = ledger_path()

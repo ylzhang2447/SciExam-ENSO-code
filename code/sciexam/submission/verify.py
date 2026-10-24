@@ -30,6 +30,7 @@ from ..agent import config as C
 from ..agent import prompts as P
 from ..agent import resources as R
 from ..agent import seal as SEAL
+from ..agent import task as T
 from . import package as PK
 
 # The protocol of an arm: a new model may change its model, names and scaffold version, not these.
@@ -201,6 +202,42 @@ def check_run(sub, arm, rep):
         rep.add("run completion", "pass", "complete after %.0f s of eligible time" % el)
 
 
+def check_task_files(sub, rep):
+    """The files the agent received: the task text as in the formal runs, the four observation
+    files of the formal runs (else declared: rebuilt), and the formal PDF (else declared: another
+    rendering of the paper)."""
+    try:
+        rows = json.loads((sub / "logs" / "run_meta.json").read_text()).get("task_files") or []
+    except (OSError, ValueError):
+        rows = []
+    if not rows:
+        rep.add("task files", "fail", "run_meta records no task files")
+        return
+    paper, data = T.reference_paper(rows), T.task_data(rows)
+    by = {r["path"]: r for r in rows}
+    bad, declared, notes = [], [], []
+    for rel in T.TASK_TEXT_FILES:
+        r = by.get(rel)
+        if not r or not r["same_as_formal"]:
+            bad.append("%s differs from the formal task text" % rel)
+    if paper["kind"] == "none":
+        bad.append("no reference paper was given")
+    elif paper["kind"] == "other_pdf":
+        declared.append("a PDF of the paper other than the formal one")
+    else:
+        notes.append("the formal PDF")
+    if data["kind"] == "rebuilt":
+        declared.append("rebuilt observation files (%s)" % ", ".join(data["differs"]))
+    else:
+        notes.append("the formal observation files")
+    if bad:
+        rep.add("task files", "fail", "; ".join(bad))
+    elif declared:
+        rep.add("task files", "declared", "; ".join(declared + notes))
+    else:
+        rep.add("task files", "pass", "the formal task text, observation files and PDF")
+
+
 def check_resources(sub, rep):
     """The agent ran with the spec's cap, on a host that held every agent running at once, and
     the samples show neither a full disk nor gaps. Out-of-memory kills inside the cap are the
@@ -365,6 +402,7 @@ def verify(sub, data_root, grade=True, image=None, timeout=3600, in_process=Fals
             "every checkpoint and log matches the seal written when the run ended")
     arm = check_config(sub, rep)
     check_run(sub, arm, rep)
+    check_task_files(sub, rep)
     check_resources(sub, rep)
     check_checkpoints(sub, rep)
     check_egress(sub, rep)

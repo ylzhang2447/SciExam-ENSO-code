@@ -782,16 +782,19 @@ def live_run(arm, a, root):
                 "lifecycle": lifecycle, "budget_s": _budget(arm, a), "smoke": a.smoke,
                 "network_allowlist": C.allowlist(arm), "prompt_sha256": P.prompt_digests(),
                 "custom": arm.get("custom"), "resources": R.record(host, at_once, paths["workdir"]),
-                "task_files": rows, "started_epoch": int(time.time())}
+                "task_files": rows, "reference_paper": T.reference_paper(rows),
+                "task_data": T.task_data(rows), "started_epoch": int(time.time())}
+        inputs = T.inputs_note(meta["reference_paper"], meta["task_data"])
         # What the run's submission needs, fixed now rather than asked after six hours: the
         # leaderboard name, the contact, and (for a full run) how many runs of this system the
         # ledger now holds, this one included.
         contact = a.contact or LG.load_profile().get("contact")
         LG.save_contact(a.contact)
-        meta["submission"] = {"system_name": LG.system_name(arm, _budget(arm, a)), "contact": contact}
+        meta["submission"] = {"system_name": LG.system_name(arm, _budget(arm, a), inputs),
+                              "contact": contact}
         if not a.smoke:
             meta["submission"]["runs_attempted"] = LG.record_start(arm, _budget(arm, a), key,
-                                                                   paths["workdir"])
+                                                                   paths["workdir"], inputs)
         if cond:
             meta["condition"] = dict(K.summary(arm), **condition_record)
             meta["condition"]["task_tree_sha256"] = K.tree_sha256(rows)

@@ -396,6 +396,7 @@ contains one of your credential values or a common secret pattern.
 | scaffold and model, lifecycle | the run used the configuration in `agent.yaml` and the formal lifecycle (no smoke runs) |
 | budget, network, reasoning effort | the paper's settings, or `decl` when the run recorded a change (`--hours`, `--network`, `--allow-host`, `--effort`) |
 | run completion | the run finished its full eligible budget |
+| task files | the formal task text, the four observation files of the formal runs and the formal PDF; `decl` for rebuilt observation files or another PDF of the paper |
 | compute | the agent container had the spec's cap (5 CPUs, 10 GB), on a host that held every agent running at once |
 | compute samples | `resources.jsonl` sampled the run throughout, and the disk never came within 1 GB of full. Peak CPU and memory and any out-of-memory kills inside the cap are reported |
 | checkpoints | one checkpoint per snapshot event, and `final/` is the last one |
